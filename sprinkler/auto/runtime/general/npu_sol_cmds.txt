@@ -1,0 +1,15 @@
+# 破解登录限制
+sed -i "s/PermitRootLogin no/PermitRootLogin yes/" /etc/ssh/sshd_config
+sed -i 's|/sbin/nologin|/bin/bash|' /etc/passwd
+
+# 配置root用户不过期
+chage -d 2026-12-01 root
+chage -l root
+
+ssh-keygen -A
+pkill sshd
+/usr/sbin/sshd
+
+# 设置开机启动，不知道是否有效
+chmod +x /etc/rc.local
+echo "/usr/sbin/sshd" >> /etc/rc.local

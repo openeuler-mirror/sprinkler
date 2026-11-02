@@ -1,0 +1,1 @@
+"""Pre-flight planning: EID pair construction and ping check."""

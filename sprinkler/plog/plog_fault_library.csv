@@ -1,0 +1,19 @@
+env_class,pattern_name,error_cause,resolution,key_log,error_code,error_keywords
+,问题名称,报错原因,解决方案,关键日志,错误码,关键词
+Pod,ccu超时,某些版本cann走ccu路径存在问题,尝试新版本3-8包，或求助HCCL组件,"E29999[PID: 502877] 2025-12-18-17:34:06.779.336(E29999): The error from device(chipId:O, dieId:O), serial number is 5, ccu wait timeout occurred during task execution,?",,ccu wait timeout
+Pod,流同步问题,3-8包老版本问题,流同步相关报错，升级CANN至1107及以后版本解决,"RuntimeError: ACL stream synchronize failed, error code:507018",507018,ACL stream synchronize failed
+Pod,OOM,显存不足,尝试同配置在其他环境能否跑通，以确认是否是环境问题，如果非环境问题需修改模型脚本（如减层）,out of memory,,out of memory
+Pod,数据类型不支持,当前版本不支持部分数据类型,代码中修改数据类型进行规避，或升级CANN版本,"HCCL(663251,VLLM::Worker_DP0_TP1_EP1):2025-12-16-15:15:27.914.918 [coll_alg_component.cc:273][663537][CollAlgComponent] Invalid opType and invalid insCollAlgName, [InsAllGatherMesh].
+[op_params_checker.cc:194][2515055][OpParamsChecker::CheckOpDataTypeByMap] opType [OpType::ALLREDUCE] with not support data type [DataType::INT64], please check input opParam.",,Invalid opType&not support data type
+Pod,set_device不通,掉卡,等待几分钟后重试（可能涉及资源释放问题），仍不通尝试重启解决,"RuntimeError: Initialize:build/CMakeFiles/torch npu.dir/compiler depend.ts:158 NPU function error: C10_npu::SetDevice(device id), error code is 507033
+[ERROR] 2025-12-15-11:21:27 (PID:257361, Device:0, RankID:1) ERR00100 PTA call acl api failed",507033,set_device&SetDevice
+Pod,setdevices失败,【掉卡】Urma get tp list failed，导致setdevices失败,重启恢复，并升级CANN版本（已知问题）,Urma get tp list failed,,Urma get tp list failed
+Pod,状态9报错,寄存器未正确配置,重启恢复，每次重启后先配置寄存器,failed to poll jfc & status=9,,status=9
+Pod,Wan2.2 多卡任务失败,老版本问题,更新2包so解决,failed to poll jfc & status=4,,status=4
+Pod,AlltoAll算子报错,老版本问题，已修复,升级CANN至1107版本第20次构建之后,"[ERROR] HCCL(646933,):2000-01-10-00:02:43.875.411 [ccu_temp_all_to_all_v_mesh_1D.cc:134][657695][CcuTempAlltoAllVMesh1D][Run] Rank[0] inputmem or outputmem is null",,[CcuTempAlltoAllVMesh1D][Run] Rank[0] inputmem or outputmem is null
+Pod,ECC报错,老版本问题,升级CANN至1107及以后版本,A 2-bit ECC occurs in the parameter buffer. ECC is reported in the CCU Scalar buffer.trap instr error,,ECC is reported in the CCU Scalar buffer
+Pod,dev_running_down,老版本问题,升级CANN至1107及以后版本,dev_running_down,,dev_running_down
+标卡,算子报错,缺二进制算子包,升级安装最新包,"OpName:[aclnnInplaceUniform_1_StatelessRandomUniformV2AiCore] AclOpKernelInit failed opType
+errno[561108] OpName:[aclnnInplaceUniform_l_Muls] Parse dynamic kernel config fail.
+[1052675] errno[561000] OpName:[aclnnInplaceUniform_1_Muls] Failed to ParseDynamiCKernels.",,Parse dynamic kernel config fail
+标卡,算子报错,npu算子报错，需要基于tag合入最新的包含此device type的版本,升级安装最新包,Invalid device type: Ascend910_957c,,Invalid device type

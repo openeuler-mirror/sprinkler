@@ -1,0 +1,12 @@
+set timeout 10
+log_user 0
+spawn ssh-copy-id -i ${pub_key} -o StrictHostKeyChecking=no -o ConnectTimeout=5 ${user_host}
+expect {
+    "yes/no" { send "yes\r"; exp_continue }
+    "password:" { send "${password}\r"; exp_continue }
+    "Password:" { send "${password}\r"; exp_continue }
+    "Permission denied" { exit 1 }
+    timeout { exit 2 }
+    eof
+}
+

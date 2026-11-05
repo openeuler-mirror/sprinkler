@@ -72,7 +72,7 @@ def host_device_eid_pairs(mode, ranks, host_device_pairs):
 
         host_eid = eid32(values, 0)
         npu_eid = eid32(values, 1)
-        host = {"rank": rank, "target": f"CPU{rank}", "eid32": host_eid}
+        host = {"rank": rank, "target": "CPU", "eid32": host_eid}
         npu = {"rank": rank, "target": f"NPU{rank}", "eid32": npu_eid, "execute_eid": npu_eid}
         # 当EID不可用且值是合法IPv4(静态配置场景)时, 携带原始IPv4供h2d ping用
         raw_npu = str(values[1]).strip() if len(values) > 1 else ""

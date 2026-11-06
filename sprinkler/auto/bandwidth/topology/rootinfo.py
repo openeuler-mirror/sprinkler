@@ -336,7 +336,7 @@ class RootInfoTopology:
             return [(rank, rank) for rank in selected]
 
         text = str(mode or "one-to-many").replace("_", "-").lower()
-        if text == "fullmesh":
+        if text in {"alltoall", "fullmesh"}:  # fullmesh 为旧名称，保留兼容
             return [(src, dest) for src in selected for dest in selected if src != dest]
         if text not in {"one-to-many", "many-to-one"}:
             raise ValueError(f"unsupported d2d mode: {mode}")

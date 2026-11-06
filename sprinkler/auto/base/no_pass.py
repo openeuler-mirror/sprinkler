@@ -12,6 +12,9 @@ from typing import List, Optional
 
 from sprinkler.logging import Colors
 
+# 免密最终总是配置给 root：非 root 登录只用于 su 到 root 写公钥。
+SSH_TARGET_USER = "root"
+
 
 @dataclass
 class SSHConfig:
@@ -144,7 +147,7 @@ class NoPassConfigurator:
         config_entry = f"""
 Host {host_match}
     HostName {target_ip}
-    User {self.config.user}
+    User {SSH_TARGET_USER}
     IdentityFile {self.key_file}
 {bind_address}    AddressFamily {address_family}
     IdentitiesOnly yes
@@ -204,11 +207,13 @@ Host {host_match}
         """使用paramiko配置SSH免密，将公钥追加到远端authorized_keys"""
         import paramiko
 
-        user_host = f"{self.config.user}@{host_alias}"
+        user_host = f"{SSH_TARGET_USER}@{host_alias}"
         if self._quick_ssh_check(host_alias):
             self._log("SSH已配置(二次检查确认)", color=Colors.GREEN)
             return True
 
+        if self.config.user != SSH_TARGET_USER:
+            self._log(f"登录用户: {self.config.user}")
         self._log(f"配置SSH免密: {user_host}")
 
         pub_key_path = Path(str(self.key_file) + ".pub")
@@ -253,7 +258,7 @@ Host {host_match}
             return False
 
         try:
-            need_su = self.config.user != "root"
+            need_su = self.config.user != SSH_TARGET_USER
             if need_su and not self.config.root_password:
                 self._log("缺少root密码(root_password)，无法su切root写公钥", color=Colors.RED)
                 return False
@@ -344,7 +349,7 @@ Host {host_match}
             self._log("SSH已配置，跳过", color=Colors.GREEN)
             self.result.ssh_success_count += 1
             self.result.ssh_success_hosts.append(
-                f"{self.config.user}@{host_alias}|Pair{dev_id}"
+                f"{SSH_TARGET_USER}@{host_alias}|Pair{dev_id}"
             )
             return
 
@@ -368,12 +373,12 @@ Host {host_match}
             if self._setup_ssh(host_alias, target_ip, source_ip):
                 self.result.ssh_success_count += 1
                 self.result.ssh_success_hosts.append(
-                    f"{self.config.user}@{host_alias}|npu{dev_id}"
+                    f"{SSH_TARGET_USER}@{host_alias}|npu{dev_id}"
                 )
             else:
                 self.result.ssh_fail_count += 1
                 self.result.ssh_fail_hosts.append(
-                    f"{self.config.user}@{host_alias}|npu{dev_id}"
+                    f"{SSH_TARGET_USER}@{host_alias}|npu{dev_id}"
                 )
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             self._log("网络不通", color=Colors.RED)
@@ -450,13 +455,17 @@ Host {host_match}
         self._show_summary()
 
 
+def _config_file_path() -> Path:
+    """免密配置使用的 config.conf 路径（与 shell 工具共用）。"""
+    from sprinkler.utils.utils import default_config_dir
+    return default_config_dir() / "config.conf"
+
+
 def _get_config_value(key: str, prompt: str, default: str = "", secret: bool = False) -> str:
     """获取配置值"""
-    from sprinkler.utils.utils import default_config_dir
-    
-    config_dir = default_config_dir()
-    config_file = config_dir / "config.conf"
-    
+    config_file = _config_file_path()
+    config_dir = config_file.parent
+
     if config_file.exists():
         try:
             with open(config_file, 'r', encoding='utf-8') as f:
@@ -490,12 +499,16 @@ def _get_config_value(key: str, prompt: str, default: str = "", secret: bool = F
     config_dir.mkdir(parents=True, exist_ok=True)
     with open(config_file, 'a', encoding='utf-8') as f:
         f.write(f"{key}={value}\n")
-    
+    print(f"已写入配置: {config_file} ({key})")
+
     return value
 
 
 def no_pass_check(args):
     """免密配置入口函数"""
+    config_file = _config_file_path()
+    status = "已存在" if config_file.exists() else "不存在，将交互输入并自动创建"
+    print(f"{Colors.GREEN}配置文件: {config_file} ({status}){Colors.RESET}")
     user = _get_config_value("POD_NPU_USER", "请输入连接NPU用户名", default="root")
     password = _get_config_value("POD_NPU_PASSWORD", "请输入登录NPU密码(输入不回显)", secret=True)
     
@@ -505,7 +518,7 @@ def no_pass_check(args):
 
     # 非root登录时需要root密码, 用于su切到root把公钥写入 /root/.ssh/authorized_keys
     root_password = ""
-    if user != "root":
+    if user != SSH_TARGET_USER:
         root_password = _get_config_value("POD_NPU_ROOT_PASSWORD",
                                           "请输入root密码(用于su切root写公钥, 输入不回显)",
                                           secret=True)

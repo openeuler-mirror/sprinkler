@@ -179,8 +179,9 @@ class ArgumentGroups:
         group.add_argument("-stream-control", dest="check_npu_stream_control", action="store_true",
                            help="check NPU stream control register via devmem")
         group.add_argument("-urma-cmd", dest="urma_cmd", action="store_true", help="print URMA listener/client commands")
-        group.add_argument("-d2d-mode", choices=["many-to-one", "one-to-many"], default="many-to-one",
-                           help="D2D pair expansion mode")
+        group.add_argument("-d2d-mode", choices=["many-to-one", "one-to-many", "alltoall"], default="many-to-one",
+                           help="D2D pair expansion mode (alltoall: every NPU sends to every other NPU; "
+                                "add -single to drop -B)")
         group.add_argument("-same-plane", dest="same_plane", action="store_true", help="use same-plane rank mapping")
         group.add_argument("-link-mode", default="all", help="xboard link selector: all, both, l0, or l1")
         group.add_argument("-urma-mode", default="write_bw", help="urma_perftest mode")

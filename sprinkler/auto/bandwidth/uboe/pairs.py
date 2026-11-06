@@ -70,7 +70,7 @@ def plan_uboe_pairs(args):
     ranks = parse_range(rank_spec) if rank_spec else sorted(targets)
     ranks = [rank for rank in ranks if rank in targets]
     # Mirror urma's intra d2d `-rank` expansion (`index_pairs`): EVERY rank in the range
-    # takes part, honoring `-d2d-mode` (many-to-one / one-to-many / fullmesh) and the
+    # takes part, honoring `-d2d-mode` (many-to-one / one-to-many / alltoall) and the
     # `-d2d-main` center. `-pair` stays explicit (a single client->server pair).
     d2d_mode = str(getattr(args, "d2d_mode", "many-to-one") or "many-to-one")
     master_rank = getattr(args, "d2d_main", None)

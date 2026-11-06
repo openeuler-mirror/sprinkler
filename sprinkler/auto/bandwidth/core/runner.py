@@ -8,6 +8,7 @@ from sprinkler.auto.bandwidth.planning.eid_pairs import pair_ranks as plan_pair_
 from sprinkler.auto.bandwidth.planning.ping_check import PingCheckRunner, PingPrecheck
 from sprinkler.auto.bandwidth.urma.results import UrmaBandwidthResultView
 from sprinkler.auto.bandwidth.urma.planner import UrmaTrafficRunner, log_summary_traffic_plan
+from sprinkler.auto.health.config_hugepage import ensure_hugepages, hugepages_configured
 from sprinkler.base.log import RunLog
 from sprinkler.base.ranges import parse_range
 
@@ -226,7 +227,15 @@ def run_local_xboard_bandwidth(args, run_log):
     results += tag_results(traffic_results, bandwidth_phase=mode, ping=True)
     return results
 
+def check_cpu_hugepages(run_log):
+    if hugepages_configured():
+        return
+    run_log.info("检测到未配置大页，自动进行配置")
+    ensure_hugepages(run_log)
+
 def run_urma_bandwidth_mode(args, run_log, mode, passed_ranks, passed_targets):
+    if mode in {"h2d", "d2h"}:
+        check_cpu_hugepages(run_log)
     phase_args = SimpleNamespace(**{**vars(args), "mode": mode})
     _, ranks, pairs = plan_eid_pairs(phase_args, run_log)
     pairs, skipped = partition_executable_pairs(pairs)

@@ -498,7 +498,7 @@ def get_eid_pairs(args):
     run_log.info(f"log_dir={run_log.path}")
     try:
         plan_args = copy.copy(args)
-        plan_args.d2d_mode = "fullmesh"
+        plan_args.d2d_mode = "alltoall"
         _, ranks, pairs = plan_eid_pairs(plan_args, run_log)
         pairs = deduplicate_d2d_pairs(pairs)
         pairs = sorted(pairs, key=lambda item: (str(item.get("kind") or ""),

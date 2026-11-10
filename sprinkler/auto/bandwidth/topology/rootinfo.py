@@ -7,6 +7,15 @@ from pathlib import Path
 from sprinkler.auto.bandwidth.common.route_conf import RouteConf, RouteEndpoint
 from sprinkler.auto.bandwidth.common import unique_ints, int_value
 
+# d2d 链路固定使用 net_layer=0。
+# A5(Atlas 850): link_type=PEER2PEER, 边两端都有 local_a/local_b, NPU 间直连;
+# A6(Atlas 860): link_type=PEER2NET + topo_type=CLOS, 边只有 local_a,
+#                表示该 NPU 通过 local_a_ports 接入同一 CLOS 网络, 网络内两两互通。
+D2D_NET_LAYER = 0
+D2D_DIRECT_LINK = "PEER2PEER"
+D2D_NET_LINK = "PEER2NET"
+D2D_LINK_TYPES = {D2D_DIRECT_LINK, D2D_NET_LINK}
+
 @dataclass(frozen=True)
 class RankEntry:
     rank: int
@@ -241,40 +250,79 @@ class RootInfoTopology:
 
     @classmethod
     def topo_rank_edges(cls, topo_data, entries):
+        """d2d 连通图用到的 rank 边。
+        只取 A5 的 PEER2PEER 直连边: A6 的 PEER2NET/CLOS 边描述的是网络接入,
+        全互通但不用于切分 rank group(避免把 xd2d/ubg 的不同 group 合并)."""
         topo_to_root = cls.topo_to_root(topo_data, entries)
         root_rank = {entry.device_id: rank for rank, entry in entries.items()}
         edges = []
-        for edge in topo_data.get("edge_list") or []:
-            if not cls.is_device_edge(edge):
-                continue
-            local_a = int_value(edge.get("local_a"), None)
-            local_b = int_value(edge.get("local_b"), None)
-            device_a = topo_to_root.get(local_a)
-            device_b = topo_to_root.get(local_b)
+        for edge in cls.d2d_topo_edges(topo_data)[0]:
+            device_a = topo_to_root.get(int_value(edge.get("local_a"), None))
+            device_b = topo_to_root.get(int_value(edge.get("local_b"), None))
             if device_a in root_rank and device_b in root_rank:
                 edges.append((root_rank[device_a], root_rank[device_b]))
         return edges
 
     @staticmethod
     def is_device_edge(edge):
-        return (isinstance(edge, dict) and edge.get("link_type") == "PEER2PEER"
-                and edge.get("position") == "DEVICE" and int_value(edge.get("net_layer"), 0) == 0)
+        """是否为 d2d(net_layer=0) 设备边。
+        A5: PEER2PEER(带 local_b); A6/Atlas 860: PEER2NET + CLOS(只有 local_a)."""
+        return (isinstance(edge, dict) and edge.get("position") == "DEVICE"
+                and int_value(edge.get("net_layer"), D2D_NET_LAYER) == D2D_NET_LAYER
+                and str(edge.get("link_type") or "").strip().upper() in D2D_LINK_TYPES)
+
+    @classmethod
+    def d2d_topo_edges(cls, topo_data):
+        """拆分 d2d 边: (直连边, 网络接入边).
+        直连边两端都有 local_b; 只有 PEER2NET 缺 local_b 时才按网络接入处理."""
+        direct, attached = [], []
+        for edge in (topo_data or {}).get("edge_list") or []:
+            if not cls.is_device_edge(edge):
+                continue
+            if int_value(edge.get("local_b"), None) is not None:
+                direct.append(edge)
+            elif str(edge.get("link_type") or "").strip().upper() == D2D_NET_LINK:
+                attached.append(edge)
+        return direct, attached
+
+    @classmethod
+    def net_peer_groups(cls, attached_edges):
+        """按 (net_layer, topo_type, topo_instance_id) 汇总接入同一张网络的 peer.
+        返回 {net_key: {local_id: [port, ...]}}."""
+        groups = {}
+        for edge in attached_edges:
+            local = int_value(edge.get("local_a"), None)
+            if local is None:
+                continue
+            key = (int_value(edge.get("net_layer"), D2D_NET_LAYER),
+                   str(edge.get("topo_type") or "").strip().upper(),
+                   int_value(edge.get("topo_instance_id"), 0))
+            ports = groups.setdefault(key, {}).setdefault(local, [])
+            for port in edge.get("local_a_ports") or []:
+                if str(port) not in ports:
+                    ports.append(str(port))
+        return groups
+
+    @staticmethod
+    def first_port_eid(port_eids, device, ports):
+        for port in ports:
+            eid = port_eids.get((device, str(port)))
+            if eid:
+                return eid
+        return ""
 
     @classmethod
     def build_adjacency(cls, root_data, topo_data, entries):
         topo_to_root = cls.topo_to_root(topo_data, entries)
         root_rank = {entry.device_id: rank for rank, entry in entries.items()}
         # 严格分层: d2d 的 adjacency 只取 net_layer=0 的端口 EID
-        port_eids = cls.port_eids(root_data, net_layer=0)
+        port_eids = cls.port_eids(root_data, net_layer=D2D_NET_LAYER)
+        direct, attached = cls.d2d_topo_edges(topo_data)
         adjacency = {}
 
-        for edge in topo_data.get("edge_list") or []:
-            if not cls.is_device_edge(edge):
-                continue
-            local_a = int_value(edge.get("local_a"), None)
-            local_b = int_value(edge.get("local_b"), None)
-            a = topo_to_root.get(local_a)
-            b = topo_to_root.get(local_b)
+        for edge in direct:
+            a = topo_to_root.get(int_value(edge.get("local_a"), None))
+            b = topo_to_root.get(int_value(edge.get("local_b"), None))
             if a not in root_rank or b not in root_rank:
                 continue
             for port in edge.get("local_a_ports") or []:
@@ -285,6 +333,21 @@ class RootInfoTopology:
                 eid = port_eids.get((b, str(port)))
                 if eid:
                     adjacency[(root_rank[b], root_rank[a])] = RouteConf.format_eid32(eid)
+
+        # A6: 同一 CLOS 网络内的 peer 两两互通, 源端取自身第一个可用端口的 EID
+        for peers in cls.net_peer_groups(attached).values():
+            resolved = {}
+            for local, ports in peers.items():
+                device = topo_to_root.get(local)
+                if device not in root_rank:
+                    continue
+                eid = cls.first_port_eid(port_eids, device, ports)
+                if eid:
+                    resolved[local] = (root_rank[device], RouteConf.format_eid32(eid))
+            for client_rank, client_eid in resolved.values():
+                for server_rank, _server_eid in resolved.values():
+                    if client_rank != server_rank:
+                        adjacency[(client_rank, server_rank)] = client_eid
         return adjacency
 
     @classmethod
@@ -350,26 +413,34 @@ class RootInfoTopology:
 
     def device_edges(self):
         if self._device_edges_cache is None:
-            topo_data = self._topo_data or {}
-            self._device_edges_cache = [edge for edge in topo_data.get("edge_list") or []
-                                        if self.is_device_edge(edge)]
+            direct, attached = self.d2d_topo_edges(self._topo_data or {})
+            self._device_edges_cache = [*direct, *attached]
         return self._device_edges_cache
 
     def edge_eid_map(self):
         """严格两步: 查 topo DEVICE 边(step1: 端口), 再从 rootinfo 按端口匹配 EID(step2).
         返回 {(local_a|local_b): {"a": {"local","ports","eid"}, "b": {...}}}.
-        对没有对应 rootinfo 项的端点, eid 为空, 由另一端机器自行解析."""
+        对没有对应 rootinfo 项的端点, eid 为空, 由另一端机器自行解析.
+        A6 的 PEER2NET 边没有 local_b, 按 CLOS 网络内两两组合生成虚拟边."""
         if self._port_eids_cache is None:
-            self._port_eids_cache = self.port_eids(self._root_data or {}, net_layer=0)
+            self._port_eids_cache = self.port_eids(self._root_data or {}, net_layer=D2D_NET_LAYER)
         local_to_device = {entry.local_id: entry.device_id for entry in self.entries.values()}
+        direct, attached = self.d2d_topo_edges(self._topo_data or {})
         edges = {}
-        for edge in self.device_edges():
+        for edge in direct:
             a = int_value(edge.get("local_a"), None)
             b = int_value(edge.get("local_b"), None)
             if a is None or b is None:
                 continue
             edges[f"{a}|{b}"] = {"a": self._edge_slot(a, edge.get("local_a_ports") or [], local_to_device),
                                  "b": self._edge_slot(b, edge.get("local_b_ports") or [], local_to_device)}
+        for peers in self.net_peer_groups(attached).values():
+            locals_list = sorted(peers)
+            for index, a in enumerate(locals_list):
+                for b in locals_list[index + 1:]:
+                    edges[f"{a}|{b}"] = {
+                        "a": self._edge_slot(a, peers[a], local_to_device),
+                        "b": self._edge_slot(b, peers[b], local_to_device)}
         return edges
 
     def _edge_slot(self, local, ports, local_to_device):

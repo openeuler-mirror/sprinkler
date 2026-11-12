@@ -116,6 +116,19 @@ class ArgumentGroups:
                                 "plog (Ascend log/atrace), msnpureport, "
                                 "npu_bmc (NPU BMC 1213 UB logs), cpu_bmc (CPU BMC 1213 UB logs), "
                                 "all (default)")
+        group.add_argument("-fault-match", "-fault_match", dest="fault_match", action="store_true",
+                           help="Match logs against the fault pattern library")
+        group.add_argument("-log-dir", "-log_dir", dest="log_dir", type=str, default=None,
+                           help="Log directory to scan for -fault-match (required, recursive .log/.txt)")
+        group.add_argument("-fault-library", "-fault_library", dest="fault_library", type=str, default=None,
+                           help="Fault pattern library CSV (default: sprinkler_config/plog_fault_library.csv, "
+                                "same directory as superpod table; not tracked in repo)")
+        group.add_argument("-output-format", "-output_format", dest="output_format", type=str,
+                           choices=["table", "json", "csv"], default="table",
+                           help="Fault match output format (default: table)")
+        group.add_argument("-output-dir", "-output_dir", dest="output_dir", type=str, default=None,
+                           help="Directory to save fault match result file "
+                                "(default: <log-dir>/fault_match_result)")
 
     @staticmethod
     def add_env_check(parser):

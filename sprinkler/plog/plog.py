@@ -1,5 +1,6 @@
 import os
 import subprocess
+import time
 
 from sprinkler.arguments import get_args
 from sprinkler.utils.utils import _RUN_PATH, find_all_shell
@@ -65,7 +66,8 @@ def plog_error_analysis(args):
 
     # plog报错匹配
     from sprinkler.env.plog.plog_analysis import main_fault_matcher
-    FAULT_CSV = os.path.join(current_dir, "plog_fault_library.csv")
+    from sprinkler.plog.fault_matcher import DEFAULT_LIBRARY_PATH
+    FAULT_CSV = DEFAULT_LIBRARY_PATH
     NO_ANCHOR_SCAN_CONTEXT = (5, 5) # (向前行数, 向后行数)
     main_fault_matcher(log_path, FAULT_CSV, NO_ANCHOR_SCAN_CONTEXT)
     print("[Info][End] Finish analysis ERROR in plog.")
@@ -153,8 +155,51 @@ def collect_logs_entry():
     result = collector.collect()
     return 0 if result.failed == 0 else 1
 
+def fault_match_entry(args):
+    """-fault-match 入口：校验参数，构造 FaultMatcher 并输出命中清单。"""
+    from sprinkler.plog.fault_matcher import (
+        FaultMatcher, DEFAULT_LIBRARY_PATH, DEFAULT_RESULT_DIRNAME, OUTPUT_FORMATS)
+    log_dir = getattr(args, "log_dir", None)
+    if not log_dir:
+        print("[Error] -fault-match 需要配合 -log-dir <日志目录> 使用")
+        return 1
+    if not os.path.isdir(log_dir):
+        print("[Error] 日志目录不存在或不是目录: {}".format(log_dir))
+        return 1
+    output_format = getattr(args, "output_format", "table") or "table"
+    if output_format not in OUTPUT_FORMATS:
+        print("[Error] 非法的输出格式: {}，可选: {}".format(output_format, "/".join(OUTPUT_FORMATS)))
+        return 1
+    library = getattr(args, "fault_library", None) or DEFAULT_LIBRARY_PATH
+    print("[Info][Start] Fault match. log dir: {}, library: {}".format(log_dir, library))
+    try:
+        matcher = FaultMatcher(library_path=library, output_format=output_format)
+    except (FileNotFoundError, ValueError) as e:
+        print("[Error] {}".format(e))
+        return 1
+    hits = matcher.match_directory(log_dir)
+    result_text = matcher.format_results(hits)
+    print(result_text)
+    output_dir = getattr(args, "output_dir", None) or os.path.join(log_dir, DEFAULT_RESULT_DIRNAME)
+    ext = {"table": "txt", "json": "json", "csv": "csv"}[output_format]
+    result_file = os.path.join(
+        output_dir, "fault_match_{}.{}".format(time.strftime("%Y%m%d_%H%M%S"), ext))
+    try:
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
+        with open(result_file, "w", encoding="utf-8") as f:
+            f.write(result_text + "\n")
+        print("[Info] 结果输出目录: {}".format(os.path.abspath(output_dir)))
+        print("[Info] 结果文件: {}".format(os.path.abspath(result_file)))
+    except OSError as e:
+        print("[Warn] 结果文件写入失败（结果已在上方打印）: {}: {}".format(result_file, e))
+    print("[Info][End] Finish fault match.")
+    return 0
+
 def plog_exec():
     args = get_args()
+    if getattr(args, "fault_match", False):
+        fault_match_entry(args)
     if args.plog_error:
         plog_error_print(args)
     if args.plog_error_analysis:

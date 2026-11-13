@@ -49,7 +49,6 @@ setuptools.setup(
         "prompt_toolkit",
         "paramiko>=2.10",
         "telnetlib3>=2.0.0",
-        "streamlit>=1.30",
     ],
     python_requires='>=3.10',
     packages=setuptools.find_packages(),

@@ -249,6 +249,58 @@ HIXL (Huawei Xfer Library) 是面向昇腾芯片的单边通信库。
         self._save_path_to_config(self.KEY_HIXL_PATH, path)
 
 
+class SerdesConfigManager(_BaseConfigManager):
+    """SerDes 工具包路径配置管理器。
+
+    记录 ``serdestool.bin`` 在 **CPU OS** 上的路径，用于 NPU OS 上缺少该
+    工具时自动上传。配置项写入 ``sprinkler_config/config.conf`` 的
+    ``SERDES_TOOL_PATH``；未配置时交互式询问并保存。
+    """
+
+    KEY_SERDES_PATH = "SERDES_TOOL_PATH"
+
+    SERDES_HELP = """
+NPU OS 上未找到 serdestool.bin，需要从 CPU OS 上传一份。
+请输入 CPU OS 上 serdestool.bin 的路径（留空跳过上传）：
+"""
+
+    def get_serdes_path(self) -> str:
+        """返回 CPU OS 上有效的 serdestool.bin 路径；取消时返回空串。"""
+        if self._load_config():
+            path = self._config_cache.get(self.KEY_SERDES_PATH)
+            if path:
+                resolved = Path(path).expanduser()
+                if resolved.is_file():
+                    return str(resolved)
+                print(f"[WARN] 配置的 serdestool 路径不存在: {resolved}")
+
+        path = self._prompt_for_path()
+        if path:
+            self._save_path_to_config(self.KEY_SERDES_PATH, path)
+        return path
+
+    def _prompt_for_path(self) -> str:
+        print(self.SERDES_HELP)
+        while True:
+            try:
+                path_input = input("serdestool.bin 路径: ").strip()
+            except (EOFError, KeyboardInterrupt):
+                print()
+                return ""
+
+            if not path_input:
+                return ""
+
+            path = Path(path_input).expanduser()
+            if path.is_file():
+                return str(path.resolve())
+
+            print(f"文件不存在: {path}")
+
+    def update_serdes_path(self, path: str):
+        self._save_path_to_config(self.KEY_SERDES_PATH, str(Path(path).expanduser()))
+
+
 def get_mpirun_config() -> tuple[str, str]:
     manager = MpirunConfigManager()
     mpich_path = manager.get_mpich_path()

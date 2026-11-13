@@ -11,6 +11,7 @@ from sprinkler.connect.telnet.bmc import TelnetBMCConnector
 from sprinkler.connect.telnet.com import TelnetCOMConnector
 from sprinkler.connect.ssh.sol.npu import NPU1213Connector
 from sprinkler.connect.ssh.sol.cpu import CPU1213Connector
+from sprinkler.connect.ssh.npu_os import NPUOSConnector
 from sprinkler.connect.sftp.base import SFTPConnector
 from sprinkler.connect.sftp.meswitch import SFTPMeSwitchConnector
 from sprinkler.connect.sftp.bmc import SFTPBMCConnector
@@ -98,6 +99,7 @@ def create_runner(args=None, run_log=None, connection_type: str = "ssh_os"):
         "telnet_com": TelnetCOMConnector,
         "npu_1213": NPU1213Connector,
         "cpu_1213": CPU1213Connector,
+        "npu_os": NPUOSConnector,
         "sftp": SFTPConnector,
         "sftp_meswitch": SFTPMeSwitchConnector,
         "sftp_bmc": SFTPBMCConnector,

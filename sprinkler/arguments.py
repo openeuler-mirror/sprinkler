@@ -396,6 +396,11 @@ class ArgumentGroups:
         group.add_argument('-roce-com', dest='roce_com', action='store_true', help="execute commands on RoCE COM targets")
         group.add_argument('-smn-os', dest='smn_os', action='store_true', help="execute commands on SMN OS targets")
         group.add_argument('-smn-bmc', dest='smn_bmc', action='store_true', help="execute commands on SMN BMC targets")
+        group.add_argument('-5808-front', dest='5808_front', action='store_true',
+                           help="execute commands on 5808 front (C-plane) switch via direct SSH (use with -ip)")
+        group.add_argument('-npu-os', dest='npu_os', action='store_true',
+                           help="execute commands on NPU OS via ssh root@npu<rank> "
+                                "(local by default; with -ip jump through that CPU OS)")
         group.add_argument('-sol-ports', dest='sol_ports', type=str, default=None,
                            help="NPU SOL ports to enter, e.g. 3 or 3,5 "
                                 "(default 3,5,7,9,11,13,15,17)")

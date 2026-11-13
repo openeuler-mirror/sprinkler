@@ -4,14 +4,14 @@ import subprocess
 import datetime
 
 from sprinkler.arguments import get_args
-from sprinkler.utils.utils import _RUN_PATH, find_all_shell
+from sprinkler.utils.utils import _RUN_PATH, find_all_shell, package_path
 from sprinkler.auto.bandwidth.svm_bandwidth import svm_bandwidth
 
 
 def run_from_args(args):
     roads = {}
     if args.auto or args.all:
-        command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/auto.sh']
+        command = ['bash', str(package_path() / "auto" / "auto.sh")]
         if args.auto:
             command.extend(['--level', args.auto])
         process = subprocess.Popen(command,
@@ -25,19 +25,9 @@ def run_from_args(args):
             print(line, end='')
         process.wait()
 
-def setrc_local():
-    command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/setup_rc_local.sh']
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
 
 def stop_urma(args):
-    roads = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/stop_npu_urma.sh'
+    roads = str(package_path() / "network" / "stop_npu_urma.sh")
 
     command = ['bash', roads]
     process = subprocess.Popen(command,
@@ -51,36 +41,6 @@ def stop_urma(args):
         print(line, end='')
     process.wait()
     
-def bios_perf(args):
-    roads = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/bios_performance.sh'
-
-    command = ['bash', roads]
-    process = subprocess.Popen(command,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        text=True,
-                        encoding='utf-8',
-                        errors='replace',
-                        bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-
-def npu_lock():
-    roads = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/npulock.sh'
-
-    command = ['bash', roads]
-    process = subprocess.Popen(command,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        text=True,
-                        encoding='utf-8',
-                        errors='replace',
-                        bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
 
 def device_online(args):
     """设备上线状态检查 - Python实现"""
@@ -98,7 +58,7 @@ def config_hugepage(args):
     return config_hugepage_check(args)
 
 def check_eth():
-    roads = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/check_eth.sh'
+    roads = str(package_path() / "auto" / "health" / "check_eth.sh")
 
     command = ['bash', roads]
     process = subprocess.Popen(command,
@@ -128,34 +88,14 @@ def npu_kill(args):
     return npu_resource_kill(args)
 
 def enable_env(args):
-    roads = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/enable_env_correct.sh'
-
-    command = ['bash', roads]
-    process = subprocess.Popen(command,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        text=True,
-                        encoding='utf-8',
-                        errors='replace',
-                        bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
+    """环境使能检查 - 复用 -env-check 的 Python 实现（高性能模式 + 分bin）"""
+    return env_check(args)
 
 def single_operator(args):
-    roads = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/single_operator.sh'
-
-    command = ['bash', roads]
-    process = subprocess.Popen(command,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        text=True,
-                        encoding='utf-8',
-                        errors='replace',
-                        bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
+    """单算子测试 - 原 single_operator.sh 已不存在，功能待补"""
+    print("ERROR: -single-operator 尚未提供 Python 实现（原 sprinkler/env/auto/single_operator.sh 已不存在）")
+    print("       建议复用 oneclick/pta_common.py 的 TEST_SCRIPT_MAP 机制补写")
+    return 1
     
 def mpirun_bandwidth(args):
     """MPirun单机带宽测试 - Python实现"""
@@ -180,69 +120,22 @@ def pta_cluster(args):
     return pta_cluster_check(args)
 
 
-def jetty_test(args):
-     
-    roads = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/get_jetty.sh'
-     
-    if hasattr(args, 'jetty_model'):
-        jetty_model = str(args.jetty_model)
-
-    if hasattr(args, 'udma_id'):
-        udma_id = str(args.udma_id)
-    
-    if hasattr(args, 'ssh_ip'):
-        ssh_ip = str(args.ssh_ip)
-
-    command = ['bash', roads, jetty_model, udma_id, ssh_ip]
-    print(command)
-    process = subprocess.Popen(command,
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.STDOUT,
-                         text=True,
-                         encoding='utf-8',
-                         errors='replace',
-                         bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-def p2p_sendrecv(args):
-    command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/p2p_sendrecv.sh']
-
-    process = subprocess.Popen(command,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        text=True,
-                        encoding='utf-8',
-                        errors='replace',
-                        bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
 def get_power(args):
-    road = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/get_rated_power.sh'
-    command = ['bash', road]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
+    """额定功率检查 - Python 实现，需配合 -test-rate-file 指定工作目录"""
+    from sprinkler.auto.base.check_power import check_local as power_check_local
+
+    test_rate_file = getattr(args, "test_rate_file", None)
+    if not test_rate_file:
+        print("ERROR: -get-power 需配合 -test-rate-file 指定 test/lib/host 所在目录")
+        return 1
+    result = power_check_local(test_rate_file, device_count=getattr(args, "device_count", 8))
+    print(f"{'PASS' if result.status else 'FAIL'} | {result.name}: {result.message}")
+    return 0 if result.status else 1
 
 def get_route(args):
-    road = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/get_route.sh'
-    command = ['bash', road]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
+    """EID 路由配置生成 - Python 实现（读 /home/source_dest_ips.txt 写 /lib/route.conf）"""
+    from sprinkler.utils.get_route_eid import main as generate_route_conf
+    return generate_route_conf()
 
 
 
@@ -250,21 +143,6 @@ def sync_time(args):
     from sprinkler.auto.base.rtc_sync import rtc_sync
     rtc_sync(args)
     
-
-def test_snr(args):
-    roads = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/test_snr.sh'
-
-    command = ['bash', roads]
-    process = subprocess.Popen(command,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        text=True,
-                        encoding='utf-8',
-                        errors='replace',
-                        bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
 
 def update_code(args):
     # 检查是否使用了 -update-code 但没有提供必要的 IP 参数
@@ -282,7 +160,7 @@ def update_code(args):
         
     command = [
         'bash', 
-        os.path.dirname(_RUN_PATH) + '/sprinkler/env/auto/update_code.sh',
+        str(package_path() / "utils" / "update_code.sh"),
         '--host-ip', host_ip,
         '--proxy-ip', proxy_ip
     ]
@@ -295,242 +173,19 @@ def update_code(args):
         print(line, end='')
     process.wait()
 
-def npu_root(args):
-    road = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/1213/npu_root.sh'
-    command = ['bash', road]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-# 1213相关检查
-def check_1213_all():
-    road = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/1213/check_1213_all.sh'
-    command = ['bash', road]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-def check_ping_1213():
-    roads = [os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/1213/check_ping_cpu1213.sh', os.path.dirname(_RUN_PATH)+ 
-             '/sprinkler/env/auto/1213/check_ping_npu1213.sh']
-    for road in roads:
-        command = ['bash', road]
-        process = subprocess.Popen(command, 
-                                stdout=subprocess.PIPE, 
-                                stderr=subprocess.STDOUT,
-                                text=True,
-                                bufsize=1)
-        for line in process.stdout:
-            print(line, end='')
-        process.wait()
-
-def check_1213_cc_config():
-    road = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/1213/check_cc.sh'
-    command = ['bash', road]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-def check_1213_df_config():
-    road = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/1213/check_df.sh'
-    command = ['bash', road]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-def check_1213_card_register():
-    road = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/1213/check_card_register.sh'
-    command = ['bash', road]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-def check_1213_port_status():
-    road = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/1213/check_port_status.sh'
-    command = ['bash', road]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-def check_1213_credit_status():
-    road = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/1213/check_credit_status.sh'
-    command = ['bash', road]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-def check_1213_slot_status():
-    road = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/1213/check_slot_status.sh'
-    command = ['bash', road]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-def check_1213_vbus_status():
-    road = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/1213/check_vbus_status.sh'
-    command = ['bash', road]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-
-# 1260相关
-def check_1260_port_status():
-    road = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/1260/check_sfu_port_status.sh'
-    command = ['bash', road]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-def check_1260_port_use():
-    road = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/1260/check_sfu_port_use.sh'
-    command = ['bash', road]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-def get_down_ip():
-    road = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/1260/collect_remote_files.sh'
-    command = ['bash', road]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-def execute_sfu_command():
-    road = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/1260/execute_unions.sh'
-    command = ['bash', road]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-
 # cpu1213/npu1213/sfu1260通用检查
-def check_credit(args):
-    # 信用证状态检查
-    # 用户输入 sprinkler -check-credit <sfu/npu/cpu> <slot号> <chip号>，检查对应chip的信用证状态
-    check_mode, slot_id, chip_id = args.check_credit
-    if check_mode == "cpu":
-        command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/general/gen_cpu1213_info.sh', slot_id, chip_id]
-    elif check_mode == "npu":
-        command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/general/gen_npu1213_info.sh', slot_id, chip_id]
-    elif check_mode == "sfu":
-        command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/general/gen_sfu1260_info.sh', slot_id, chip_id]
-    else:
-        print("请输入正确的格式，sprinkler -check-credit <sfu/npu/cpu> <slot号> <chip号>")
-        sys.exit(1)
-
-    process = subprocess.Popen(command,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        text=True,
-                        encoding='utf-8',
-                        errors='replace',
-                        bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-    from sprinkler.env.auto.general.check_credit_status import execute
-    execute()
-
-def packet_capture(args):
-    # 查报文
-    # 用户输入 sprinkler -packet-capture <sfu/npu/cpu> <slot号> <chip号>，查对应chip所有端口的报文
-    check_mode, slot_id, chip_id = args.packet_capture
-    if check_mode == "cpu":
-        command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/general/gen_cpu1213_info.sh', slot_id, chip_id]
-    elif check_mode == "npu":
-        command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/general/gen_npu1213_info.sh', slot_id, chip_id]
-    elif check_mode == "sfu":
-        command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/auto/general/gen_sfu1260_info.sh', slot_id, chip_id]
-    else:
-        print("请输入正确的格式，sprinkler -packet-capture <sfu/npu/cpu> <slot号> <chip号>")
-        sys.exit(1)
-
-    process = subprocess.Popen(command,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        text=True,
-                        encoding='utf-8',
-                        errors='replace',
-                        bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-    from sprinkler.env.auto.general.packet_capture import execute
-    execute(slot_id, chip_id)
-
 # 框内 d-u-d 链路查询
 def query_path(args):
+    """框内 d-u-d 链路查询 - 当前缺少实现，明确报错而不是抛裸 traceback"""
     src_device_name, src_unit_id, src_port_id, dest_ip = args.query_path
-    from sprinkler.env.auto.d2u2d.query_d2u2d_path import execute
-    execute(src_device_name, src_unit_id, src_port_id, dest_ip)
+    try:
+        from sprinkler.auto.runtime.general.query_path import query_path_execute
+    except ImportError:
+        print("ERROR: -query-path 功能尚未实现（缺少 sprinkler/auto/runtime/general/query_path.py）")
+        print(f"       收到参数: device={src_device_name} unit={src_unit_id} "
+              f"port={src_port_id} dest_ip={dest_ip}")
+        return 1
+    return query_path_execute(src_device_name, src_unit_id, src_port_id, dest_ip)
 
 def cluster_eth(args):
     from sprinkler.auto.base.cluster_eth import cluster_eth
@@ -576,12 +231,8 @@ def auto_exec():
     """
     args = get_args()
     rc = 0
-    if args.set_rc:
-        setrc_local()
     if args.stop_urma:
         stop_urma(args)
-    if args.npu_lock:
-        npu_lock()
     if args.device_online:
         device_online(args)
     if args.check_firewall:
@@ -606,16 +257,12 @@ def auto_exec():
         pta_test(args)
     if getattr(args, 'pta_cluster', False):
         pta_cluster(args)
-    if args.p2p_sendrecv:
-        p2p_sendrecv(args)
 
     if args.sync_time:
         sync_time(args)
     if args.gen_route:
         print('[warning]不再需要执行-gen-route，直接执行-no-pass配置免密，或-npu-ip查看;260630后将删除此命令')
         print('[warning]260630后将删除此命令')
-    if args.test_snr:
-        test_snr(args)
     if args.npu_ip:
         args.mode = "h2d"
         from sprinkler.auto.bandwidth.planning.eid_pairs import get_eid_pairs
@@ -626,8 +273,6 @@ def auto_exec():
         update_code(args)
     if args.cluster_mpi:
         cluster_mpi(args)
-    if args.npu_root:
-        npu_root(args)
     if getattr(args, 'sfu_check', False) or getattr(args, 'npu_check', False) or getattr(args, 'cpu_check', False):
         from sprinkler.auto.runtime.check.runtime_check import runtime_check
         runtime_check(args)
@@ -635,8 +280,6 @@ def auto_exec():
         get_route(args)
     if args.enable_env:
         enable_env(args)
-    if args.jetty:
-        jetty_test(args)
     if args.ssh_check:
         from sprinkler.auto.runtime.general import ssh_check
         ssh_check.execute(args)

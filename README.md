@@ -17,7 +17,7 @@ Sprinkler
 ## 健康检查命令
 ```shell
 # 安装
-pip install -e Sprinkler
+pip install -e sprinkler
 
 sprinkler -env-check
 sprinkler -device-online

@@ -3,7 +3,7 @@
 # -------- 引入公共库 --------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$(dirname "$SCRIPT_DIR")"
-source "$SCRIPT_DIR/common.sh"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../sprinkler/utils/common.sh"
 
 CHECK_ID="NET_CHECK"
 
@@ -11,7 +11,7 @@ CHECK_ID="NET_CHECK"
 log INFO "$CHECK_ID" "正在加载配置参数..."
 
 # 引入公共配置库
-. "${PARENT_DIR}/config_util.sh"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../sprinkler/utils/config_util.sh"
 
 # 配置参数
 config_require_keys \

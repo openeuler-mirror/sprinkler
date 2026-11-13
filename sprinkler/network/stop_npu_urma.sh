@@ -7,8 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # 引入公共配置库
-. "${PARENT_DIR}/config_util.sh"
-source "$SCRIPT_DIR/common.sh"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../sprinkler/utils/config_util.sh"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../sprinkler/utils/common.sh"
 
 # 配置参数
 config_require_keys \
@@ -24,7 +24,7 @@ GEN_CONF_PATH="${GEN_CONF_PATH:-${PARENT_DIR}/network/gen_npu_ip_map.sh}"
 chmod +x $GEN_CONF_PATH
 # -------- 获取设备列表 --------
 log INFO "$CHECK_ID" "获取NPU设备列表..."
-DEVICES=($(bash "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/npuip.sh"))
+DEVICES=($(bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../sprinkler/utils/npuip.sh"))
 
 if [ ${#DEVICES[@]} -eq 0 ]; then
     log FAIL "$CHECK_ID" "未找到任何NPU设备"

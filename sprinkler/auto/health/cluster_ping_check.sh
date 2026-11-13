@@ -13,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMMON_SH="${COMMON_SH:-}"
 if [[ -z "$COMMON_SH" ]]; then
   if [[ -f "$SCRIPT_DIR/common.sh" ]]; then
-    COMMON_SH="$SCRIPT_DIR/common.sh"
+    COMMON_SH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../sprinkler/utils/common.sh"
   else
     COMMON_SH=""
   fi
@@ -30,7 +30,7 @@ CONFIG_UTIL_ROOT=${GRANDPARENT_DIR}/sprinkler_config
 LOGS_ROOT=${GRANDPARENT_DIR}/sprinkler_logs
 mkdir -p "$CONFIG_UTIL_ROOT"
 mkdir -p "$LOGS_ROOT"
-. "${PARENT_DIR}/config_util.sh"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../sprinkler/utils/config_util.sh"
 config_require_keys \
     "CLUSTER_CONF|请输入远端机器的配置文件路径|$CONFIG_UTIL_ROOT/cluster.conf|0|"
 log INFO "$CHECK_ID" "远端机器的配置文件路径: $CLUSTER_CONF"

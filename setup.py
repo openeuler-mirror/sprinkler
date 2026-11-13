@@ -51,7 +51,7 @@ setuptools.setup(
         "telnetlib3>=2.0.0",
         "streamlit>=1.30",
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.10',
     packages=setuptools.find_packages(),
     # Add in any packaged data.
     exclude_package_data={'': ['**/*.md']},

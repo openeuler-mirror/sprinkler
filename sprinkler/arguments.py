@@ -139,7 +139,8 @@ class ArgumentGroups:
         group.add_argument("-check-eth", "-check_eth", action='store_true', help="Check ethernet")
         group.add_argument("-cluster-eth", "-cluster-eth", action='store_true', help="Cluster ethernet check")
         group.add_argument("-check-cpu-mem", "-check_cpu_mem", action='store_true', help="Check CPU memory")
-        group.add_argument("-execute-npu", "-execute_npu", type=str, default="None", help="Execute command set on Npu")
+        group.add_argument("-execute-npu", "-execute_npu", type=str, nargs="?", const="", default=None,
+                           help="Execute command set on Npu (no path: ask interactively)")
         group.add_argument("-check-chip-delay", "-check_chip_delay", action='store_true', help="Query chip latency on each device")
         group.add_argument("-device-online", "-device_online", action='store_true', help="Check device online")
         group.add_argument("-check-firewall", "-check_firewall", action='store_true', help="Check firewalld/iptables, prompt to stop if active")

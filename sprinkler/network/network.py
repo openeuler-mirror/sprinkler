@@ -147,5 +147,5 @@ def network_exec():
         urma_fix()
     if args.reg_rw:
         reg_rw(args)
-    if args.execute_npu:
+    if args.execute_npu is not None:
         execute_npu()

@@ -25,6 +25,7 @@ import shlex
 import subprocess
 import sys
 import time
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -102,6 +103,28 @@ def _use_color() -> bool:
 
 def _c(text: str, color: str) -> str:
     return "{}{}{}".format(color, text, Colors.RESET) if _use_color() else text
+
+
+def _display_width(text: str) -> int:
+    """终端显示宽度：中文/全角按 2 列算，避免表格错位。"""
+    width = 0
+    for ch in text:
+        if unicodedata.combining(ch):
+            continue
+        width += 2 if unicodedata.east_asian_width(ch) in {"W", "F"} else 1
+    return width
+
+
+def _pad(text: str, width: int, align: str = "left") -> str:
+    """按显示宽度补齐到 width 列（文本需为纯文本，不含颜色转义）。"""
+    gap = max(0, width - _display_width(text))
+    return (" " * gap + text) if align == "right" else (text + " " * gap)
+
+
+def _pad_colored(text: str, width: int, color: Optional[str], align: str = "right") -> str:
+    """先按纯文本宽度补位，再染色，避免转义码干扰列宽。"""
+    padded = _pad(text, width, align)
+    return _c(padded, color) if color else padded
 
 
 def _alias_index(alias: str) -> int:
@@ -202,6 +225,9 @@ def _ask_command_file() -> Optional[Path]:
 
 def _resolve_command_file(raw: Optional[str]) -> Optional[Path]:
     text = (raw or "").strip()
+    # 兼容历史上 default="None" 的字符串默认值，避免把 "None" 当成路径。
+    if text.lower() in {"", "none"}:
+        text = ""
     if not text:
         return _ask_command_file()
     path = Path(text).expanduser()
@@ -305,15 +331,23 @@ def _print_summary(executions: Sequence[NpuExecution], log_dir: Path, command_fi
     print(_c("执行汇总", Colors.BOLD))
     print("=" * 78)
     print("  命令集: {}".format(command_file))
-    print("  {:<8} {:>6} {:>6} {:>6} {:>9}".format("NPU", "命令", "成功", "失败", "耗时"))
+    col_npu, col_cmd, col_ok, col_fail, col_time = 8, 6, 6, 6, 9
+    header = "  {} {} {} {} {}".format(
+        _pad("NPU", col_npu),
+        _pad("命令", col_cmd, "right"),
+        _pad("成功", col_ok, "right"),
+        _pad("失败", col_fail, "right"),
+        _pad("耗时", col_time, "right"),
+    )
+    print(header)
     for execution in executions:
         failed = execution.fail_count
-        print("  {:<8} {:>6} {:>6} {:>6} {:>8.2f}s".format(
-            execution.alias,
-            len(execution.results),
-            execution.ok_count,
-            _c(str(failed), Colors.RED) if failed else str(failed),
-            execution.elapsed,
+        print("  {} {} {} {} {}".format(
+            _pad(execution.alias, col_npu),
+            _pad(str(len(execution.results)), col_cmd, "right"),
+            _pad(str(execution.ok_count), col_ok, "right"),
+            _pad_colored(str(failed), col_fail, Colors.RED if failed else None),
+            _pad("{:.2f}s".format(execution.elapsed), col_time, "right"),
         ))
 
     total_commands = sum(len(item.results) for item in executions)

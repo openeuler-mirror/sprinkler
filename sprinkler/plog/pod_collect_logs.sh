@@ -4,7 +4,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 # 引入公共配置库
-. "${PARENT_DIR}/config_util.sh"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../sprinkler/utils/config_util.sh"
 
 # 配置参数
 config_require_keys \
@@ -46,10 +46,12 @@ cp /var/log/messages "$DEST_DIR/CPU/var/log/messages"
 
 
 # 获取当前NPU IP
-SERVERS=($(bash "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/npuip.sh"))
+SERVERS=($(bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../sprinkler/utils/npuip.sh"))
 
 # 配置免密操作
-bash "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/network/no_password.sh"  2>&1 | grep -E --line-buffered "ERROR|WARN|INFO"
+# [DEPRECATED] 引用文件已不存在，功能由 sprinkler -no-pass 取代
+# bash "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/network/no_password.sh"  2>&1 | grep -E --line-buffered "ERROR|WARN|INFO"
+:  # no-op（原命令已下线）
 
 mkdir -p "$DEST_DIR/NPU"
 # 为每个服务器收集日志

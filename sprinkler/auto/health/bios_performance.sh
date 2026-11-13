@@ -7,7 +7,7 @@ CHECK_ID="bios_perf"
 
 # 引入公共库（支持被单独运行/被总控调用）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../../sprinkler/utils/common.sh"
 
 check_bios() {
   local pattern="/sys/devices/system/cpu/cpu*/cpuidle/state2/usage"

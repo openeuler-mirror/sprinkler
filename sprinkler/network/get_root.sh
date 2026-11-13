@@ -3,7 +3,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 # 引入公共配置库
-. "${PARENT_DIR}/config_util.sh"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../sprinkler/utils/config_util.sh"
 
 # 配置参数
 config_require_keys \
@@ -16,8 +16,12 @@ USER=$POD_NPU_USER
 PASSWORD=$POD_NPU_PASSWORD
 HW_USER=$POD_NPU_HW_USER
 HW_PASSWORD=$POD_NPU_HW_PASSWORD
-ip_index=($(bash "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/npuip.sh"))
-chmod +x $(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/autoroot.sh
+ip_index=($(bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../sprinkler/utils/npuip.sh"))
+# [DEPRECATED] 引用文件已不存在，功能由 sprinkler -no-pass 取代
+# chmod +x $(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/autoroot.sh
+:  # no-op（原命令已下线）
 for ((i=0; i<=7; i++)); do
-    "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/autoroot.sh" ${ip_index[$i]} $POD_NPU_PASSWORD $HW_USER $HW_PASSWORD
+    # [DEPRECATED] 引用文件已不存在，功能由 sprinkler -no-pass 取代
+    # "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/autoroot.sh" ${ip_index[$i]} $POD_NPU_PASSWORD $HW_USER $HW_PASSWORD
+    :  # no-op（原命令已下线）
 done

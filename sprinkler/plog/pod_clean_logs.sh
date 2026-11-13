@@ -8,10 +8,12 @@ rm -rf ${dmesg_path}/*
 ### 清理NPU日志 ###
 
 # 获取当前NPU IP
-SERVERS=($(bash "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/npuip.sh"))
+SERVERS=($(bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../sprinkler/utils/npuip.sh"))
 
 # 配置免密操作
-bash "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/network/no_password.sh"  2>&1 | grep -E --line-buffered "ERROR|WARN|INFO"
+# [DEPRECATED] 引用文件已不存在，功能由 sprinkler -no-pass 取代
+# bash "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/network/no_password.sh"  2>&1 | grep -E --line-buffered "ERROR|WARN|INFO"
+:  # no-op（原命令已下线）
 
 # 为每个服务器清理日志
 for i in "${!SERVERS[@]}";

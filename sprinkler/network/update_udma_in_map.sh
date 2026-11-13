@@ -28,7 +28,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 # 引入公共配置库
-. "${PARENT_DIR}/config_util.sh"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../sprinkler/utils/config_util.sh"
 
 config_require_keys \
     "POD_NPU_USER|请输入NPU的ssh连接用户名|root|0|validate_non_empty"

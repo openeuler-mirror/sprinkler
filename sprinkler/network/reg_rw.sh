@@ -4,7 +4,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 FOUR_PARENT_DIR="$(dirname "$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")")"
-source "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/auto/common.sh"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../sprinkler/utils/common.sh"
 mkdir -p $FOUR_PARENT_DIR/reg_rw_logs
 SAVE_PATH=$FOUR_PARENT_DIR/reg_rw_logs
 # -------- config --------
@@ -15,7 +15,7 @@ EXPECTED_DEVICE_COUNT="${EXPECTED_DEVICE_COUNT:-8}"
 log INFO "$CHECK_ID" "正在加载配置参数..."
 
 # 引入公共配置库
-. "${PARENT_DIR}/config_util.sh"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../sprinkler/utils/config_util.sh"
 
 # 解析参数
 while [[ $# -gt 0 ]]; do

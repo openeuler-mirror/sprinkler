@@ -122,7 +122,6 @@ class ArgumentGroups:
         group = parser.add_argument_group(title='Environment Check')
         group.add_argument("-auto", "--auto", nargs='?', const="L2", choices=["L1", "L2"], metavar="LEVEL",
                            help="Open Automatic Environmental Health Check Func")
-        group.add_argument("-set-rc", "-set_rc", action='store_true', help="Set rc")
         group.add_argument("-enable-env", "-enable_env", action='store_true', help="enable env config is ok")
         group.add_argument("-env-check", "-env_check", action='store_true', help="Check env")
         group.add_argument("-cpu-hugepage", "-cpu_hugepage", action='store_true', help="Configure CPU hugepages memory")
@@ -137,12 +136,10 @@ class ArgumentGroups:
         group.add_argument("-npu-smi", "-npu_smi", action='store_true', help="quick npu smi memory watch")
         group.add_argument("-reg-rw", "-reg_rw", action='store_true', help="Register read/write")
         group.add_argument("-reg-ids", "-reg_ids", type=str, default="0,1,2,3,4,5,6,7", help="Register IDs")
-        group.add_argument("-npu-lock", "-npu_lock", action='store_true', help="NPU lock")
         group.add_argument("-check-eth", "-check_eth", action='store_true', help="Check ethernet")
         group.add_argument("-cluster-eth", "-cluster-eth", action='store_true', help="Cluster ethernet check")
         group.add_argument("-check-cpu-mem", "-check_cpu_mem", action='store_true', help="Check CPU memory")
         group.add_argument("-execute-npu", "-execute_npu", type=str, default="None", help="Execute command set on Npu")
-        group.add_argument("-npu-root", "-npu_root", action='store_true', help="open npu root")
         group.add_argument("-check-chip-delay", "-check_chip_delay", action='store_true', help="Query chip latency on each device")
         group.add_argument("-device-online", "-device_online", action='store_true', help="Check device online")
         group.add_argument("-check-firewall", "-check_firewall", action='store_true', help="Check firewalld/iptables, prompt to stop if active")
@@ -247,9 +244,7 @@ class ArgumentGroups:
         group.add_argument("-get-route", "-get_route", action='store_true', help="Restore the routing configuration")
         group.add_argument("-gen-route", "-gen_route", action='store_true', help="Auto gen route.conf")
         group.add_argument("-sync-time", "-sync_time", action='store_true', help="Sync system time from RTC")
-        group.add_argument("-test-snr", "-test_snr", action='store_true', help="Auto test snr")
         group.add_argument("-npu-ip", "-npu_ip", action='store_true', help="Show all npu ip")
-        group.add_argument("-p2p-sendrecv", "-p2p_sendrecv", action='store_true', help="Auto check p2p send/recv bandwidth")
 
     @staticmethod
     def add_utils(parser):
@@ -260,11 +255,6 @@ class ArgumentGroups:
         group.add_argument("-get-power", "-get_power", action='store_true', help="get rated power")
         group.add_argument("-get-root", "-get_root", action='store_true', help="Get root configuration")
         group.add_argument("-test-rate-file", type=str, help="Power test file path for hp-check")
-        group.add_argument("-jetty", action='store_true', help="jetty test")
-        group.add_argument("-jetty-model", "-jm", type=str, choices=["cpu", "npu"], default="cpu",
-                           help="Select the jetty mode")
-        group.add_argument("-udma-id", type=int, default=3, help="Set udma id for jetty test")
-        group.add_argument("-ssh-ip", type=str, help="Set ssh ip for jetty test")
         group.add_argument("-single-operator", "-single_operator", action='store_true', help="Check hccl single operator")
         group.add_argument("-mpirun-bw", "-mpirun_bw", action='store_true', help="Check mpirun bandwidth test")
         group.add_argument("-test-gpt", "-test_gpt", action='store_true', help="Auto test gpt")

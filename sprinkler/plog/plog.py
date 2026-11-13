@@ -2,13 +2,13 @@ import os
 import subprocess
 
 from sprinkler.arguments import get_args
-from sprinkler.utils.utils import _RUN_PATH, find_all_shell
+from sprinkler.utils.utils import _RUN_PATH, find_all_shell, package_path
 
 
 def run_from_args(args):
     roads = {}
     if args.plog or args.all:
-        roads = os.path.dirname(_RUN_PATH)+ '/sprinkler/env/plog/check_log.sh'
+        roads = str(package_path() / "plog" / "check_log.sh")
 
         command = ['bash', roads]
         process = subprocess.Popen(command,
@@ -29,7 +29,7 @@ def plog_error_print(args):
     if hasattr(args, 'number'):
         script_args.extend(['-n', str(args.number)])
     print("[Info][Start] Find ERROR in logs.")
-    command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/plog/plog_search.sh'] + script_args
+    command = ['bash', str(package_path() / "plog" / "plog_search.sh")] + script_args
     process = subprocess.Popen(command,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT,
@@ -53,7 +53,7 @@ def plog_error_analysis(args):
         if hasattr(args, 'number'):
             script_args.extend(['-n', str(args.number)])
         print("[Info][Start] Find ERROR in logs.")
-        command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/plog/plog_search.sh'] + script_args
+        command = ['bash', str(package_path() / "plog" / "plog_search.sh")] + script_args
         process = subprocess.Popen(command,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT,
@@ -64,14 +64,14 @@ def plog_error_analysis(args):
         process.wait()
 
     # plog报错匹配
-    from sprinkler.env.plog.plog_analysis import main_fault_matcher
+    from sprinkler.plog.plog_analysis import main_fault_matcher
     FAULT_CSV = os.path.join(current_dir, "plog_fault_library.csv")
     NO_ANCHOR_SCAN_CONTEXT = (5, 5) # (向前行数, 向后行数)
     main_fault_matcher(log_path, FAULT_CSV, NO_ANCHOR_SCAN_CONTEXT)
     print("[Info][End] Finish analysis ERROR in plog.")
 
 def log_save_local():
-    command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/plog/pod_collect_logs.sh']
+    command = ['bash', str(package_path() / "plog" / "pod_collect_logs.sh")]
     process = subprocess.Popen(command,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT,
@@ -82,7 +82,7 @@ def log_save_local():
     process.wait()
 
 def log_clean_local():
-    command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/plog/pod_clean_logs.sh']
+    command = ['bash', str(package_path() / "plog" / "pod_clean_logs.sh")]
     process = subprocess.Popen(command,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT,
@@ -93,7 +93,7 @@ def log_clean_local():
     process.wait()
 
 def check_log_config():
-    command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/plog/check_log.sh']
+    command = ['bash', str(package_path() / "plog" / "check_log.sh")]
     process = subprocess.Popen(command,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT,
@@ -104,7 +104,7 @@ def check_log_config():
     process.wait()
 
 def log_save_qemu():
-    command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/plog/qemu_gather_logs.sh']
+    command = ['bash', str(package_path() / "plog" / "qemu_gather_logs.sh")]
     process = subprocess.Popen(command,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT,
@@ -115,7 +115,7 @@ def log_save_qemu():
     process.wait()
 
 def log_clean_qemu():
-    command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/plog/qemu_clean_logs.sh']
+    command = ['bash', str(package_path() / "plog" / "qemu_clean_logs.sh")]
     process = subprocess.Popen(command,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT,
@@ -126,7 +126,7 @@ def log_clean_qemu():
     process.wait()
 
 def reinsert_ipourma_ko():
-    command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/plog/reinsert_ipourma_ko.sh']
+    command = ['bash', str(package_path() / "plog" / "reinsert_ipourma_ko.sh")]
     process = subprocess.Popen(command,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT,
@@ -137,7 +137,7 @@ def reinsert_ipourma_ko():
     process.wait()
 
 def check_chip_delay():
-    command = ['bash', os.path.dirname(_RUN_PATH)+ '/sprinkler/env/plog/check_chip_delay.sh']
+    command = ['bash', str(package_path() / "plog" / "check_chip_delay.sh")]
     process = subprocess.Popen(command,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT,

@@ -15,7 +15,6 @@ from sprinkler.auto.bandwidth.common import tag_results
 from sprinkler.auto.bandwidth.uboe.commands import UboeCommandBuilder
 from sprinkler.auto.bandwidth.uboe.show_resolver import UboeShowResolver
 from sprinkler.auto.bandwidth.uboe.pairs import plan_uboe_pairs
-from sprinkler.auto.bandwidth.urma.executor import UrmaCommandExecutor
 from sprinkler.auto.bandwidth.urma.planner import UrmaTrafficRunner
 
 UBOE_TRAFFIC_FIELDS = ("client_udma", "server_udma", "client_bond_ip", "server_bond_ip")
@@ -42,11 +41,10 @@ def _run_traffic(args, run_log, pairs, remote_executor=None):
     if skipped:
         run_log.info(f"uboe_skipped_not_executable={skipped}")
 
-    executor = UrmaCommandExecutor(args)
     traffic_results = UrmaTrafficRunner(
         args=args, run_log=run_log,
         command_builder=UboeCommandBuilder(args),
-        show_resolver=UboeShowResolver(executor),
+        show_resolver=UboeShowResolver(),
     ).run(traffic_pairs) if traffic_pairs else []
     results = list(env_failed)
     results += tag_results(traffic_results, bandwidth_phase="uboe", ping=True)

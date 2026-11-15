@@ -56,6 +56,14 @@ def parse_host_device_pairs_text(text):
     flush()
     return pairs
 
+def host_device_pairs_command(device_ids):
+    """生成逐 device 读取 /proc/asdrv_ub/pair_info 的 shell 命令。"""
+    devices = " ".join(str(device) for device in device_ids)
+    return (f"for dev in {devices}; do "
+            "echo $dev > /proc/asdrv_ub/dev_id 2>/dev/null || continue; "
+            "echo __SPRINKLER_DEV__ $dev; "
+            "cat /proc/asdrv_ub/pair_info 2>/dev/null || true; done; true")
+
 def rootinfo_device_ranks(path=DEFAULT_ROOTINFO):
     try:
         data = json.loads(Path(path).expanduser().read_text(encoding="utf-8", errors="ignore"))

@@ -5,11 +5,12 @@ import posixpath
 import shlex
 from contextlib import closing
 
-from sprinkler.auto.bandwidth.common import unique_ints, int_value, pair_result, xboard_pair_result, link_names, xboard_mapping_mode, DEFAULT_ROOTINFO, _is_ipv4
+from sprinkler.auto.bandwidth.common import unique_ints, int_value, pair_result, xboard_pair_result, link_names, xboard_mapping_mode, xboard_rank_pairs, DEFAULT_ROOTINFO, _is_ipv4
 from sprinkler.auto.bandwidth.topology.rootinfo import RootInfoTopology
 from sprinkler.auto.bandwidth.common.route_conf import RouteConf
 from sprinkler.connect.targets import ConnectionTarget
-from sprinkler.config.host_device_pairs import get_host_and_device_pairs, parse_host_device_pairs_text
+from sprinkler.config.host_device_pairs import (get_host_and_device_pairs, parse_host_device_pairs_text,
+                                                host_device_pairs_command)
 
 def remote_inventory_parts(remote_plan):
     return (remote_plan.get("local_inventory") or remote_plan.get("server_inventory") or {},
@@ -138,19 +139,9 @@ class ClusterPairBuilder:
         return pairs
 
     def rank_pairs(self, client_inventory, server_ranks, same_plane, all2all, client_index):
-        servers = [int(rank) for rank in server_ranks]
         clients = unique_ints(item.get("rank") for item in client_inventory.get("ranks") or [])
-        if all2all and same_plane:
-            if client_index >= len(servers):
-                return []
-            server = servers[client_index]
-            return [(client, server) for client in clients or [server]]
-        if all2all:
-            return [(client, server) for server in servers for client in clients or [server]]
-        if same_plane:
-            return [(rank, rank) for rank in servers]
-        server = servers[0] if servers else 0
-        return [(client, server) for client in clients or [server]]
+        return xboard_rank_pairs(clients, server_ranks, same_plane=same_plane,
+                                 all2all=all2all, machine_index=client_index)
 
     def selected_links(self, client_rank, server_rank, link_mode):
         requested = link_names(link_mode)
@@ -319,11 +310,7 @@ class ClusterInventoryCollector:
         return result.get("stdout") or ""
 
     def read_host_device_pairs(self, client, target, device_ids):
-        devices = " ".join(str(device) for device in device_ids)
-        command = (f"for dev in {devices}; do "
-                   "echo $dev > /proc/asdrv_ub/dev_id 2>/dev/null || continue; "
-                   "echo __SPRINKLER_DEV__ $dev; "
-                   "cat /proc/asdrv_ub/pair_info 2>/dev/null || true; done; true")
+        command = host_device_pairs_command(device_ids)
         result = self.connection_manager.run_command(client, target, command)
         pairs = parse_host_device_pairs_text(result.get("stdout")) if result.get("ok") else {}
         # 远端无/proc/asdrv_ub时, 用本地静态host/device对(两端NPU IP相同)。

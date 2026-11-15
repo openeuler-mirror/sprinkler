@@ -201,14 +201,14 @@ def precheck_pairs_for_traffic(args, pairs, run_log=None, remote_executor=None):
 
 
 def env_failed_result(pair, reason):
-    return command_result(target=pair.get("target") or pair_target(pair), host=execution_host(pair),
+    return command_result(target=pair.get("target") or uboe_pair_target(pair), host=execution_host(pair),
                           cmd="uboe env check", ok=False, rc=2, error_type="env",
                           stderr=reason,
                           **{**pair_context(pair), "bandwidth_phase": "uboe",
                              "execution_status": "env_failed", "ping": False, "reason": reason})
 
 
-def pair_target(pair):
+def uboe_pair_target(pair):
     return f"uboe:{pair.get('client_target')}->{pair.get('server_target')}"
 
 

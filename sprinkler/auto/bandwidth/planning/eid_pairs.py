@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from sprinkler.auto.bandwidth.topology.inventory import ClusterInventoryBuilder, ClusterPairBuilder, ClusterInventoryCollector, remote_inventory_parts, local_xboard_pairs, local_xboard_pairs_from_inventory
-from sprinkler.auto.bandwidth.common import unique_ints, int_value, pair_result, xboard_pair_result, is_xboard_pair, display_reason, display_link, pair_flow_text, has_link_distinction, has_target_selector, args_mode_list, args_link_mode, xboard_mapping_mode, selected_xboard_pairs, parse_pair_spec, DEFAULT_ROOTINFO, _is_ipv4
+from sprinkler.auto.bandwidth.common import unique_ints, int_value, pair_result, xboard_pair_result, is_xboard_pair, display_reason, display_link, pair_flow_text, has_link_distinction, has_target_selector, args_mode_list, args_link_mode, selected_xboard_pairs, parse_pair_spec, DEFAULT_ROOTINFO, _is_ipv4
 from sprinkler.auto.bandwidth.topology.rootinfo import RootInfoTopology
 from sprinkler.auto.bandwidth.common.route_conf import RouteConf
 from sprinkler.base.log import RunLog
@@ -86,31 +86,6 @@ def host_device_eid_pairs(mode, ranks, host_device_pairs):
                                  link="topo", ok=ok, reason=reason))
     return pairs
 
-def npu_side(endpoint, host_pairs=None):
-    values = (host_pairs or {}).get(endpoint.rank, [])
-    execute_eid = eid32(values, 1)
-    # EID不可用但静态配置是合法IPv4时, 用IPv4作为执行地址(供ssh免密)
-    if not execute_eid and len(values) > 1 and _is_ipv4(str(values[1])):
-        execute_eid = str(values[1]).strip()
-    return {"rank": endpoint.rank, "target": f"NPU{endpoint.rank}", "eid32": endpoint.eid32,
-            "execute_eid": execute_eid}
-
-def d2d_eid_pairs(topology, ranks, mode="one-to-many", master_rank=None, host_pairs=None):
-    pairs = []
-    for source, destination, link in topology.intra_d2d_pairs(ranks, mode=mode, master_rank=master_rank):
-        no_topo = str(link or "") == "no_topo_mapping"
-        ok = bool(source.eid32 and destination.eid32) and not no_topo
-        if ok:
-            reason = "ready"
-        elif no_topo:
-            reason = "no_topo_mapping"
-        else:
-            reason = "eid missing"
-        pairs.append(pair_result("intra_d2d", "intra", "npu", client=npu_side(source, host_pairs),
-                                 server=npu_side(destination, host_pairs), link=link or "", ok=ok, reason=reason,
-                                 execution_status="skipped" if no_topo else "planned"))
-    return pairs
-
 def custom_d2d_eid_pairs(topology, custom_pairs, host_pairs=None):
     inventory = ClusterInventoryBuilder().from_topology(None, topology, host_pairs)
     builder = ClusterPairBuilder(inventory, [inventory])
@@ -159,7 +134,7 @@ def custom_d2d_eid_pairs(topology, custom_pairs, host_pairs=None):
                                  link=link, ok=ok, reason=reason, execution_status="skipped" if no_topo else "planned"))
     return pairs
 
-def custom_xboard_eid_pairs(topology, custom_pairs, link_mode="all", args=None, edge_strict=False):
+def custom_xboard_eid_pairs(topology, custom_pairs, link_mode="all", edge_strict=False):
     host_pairs = get_host_and_device_pairs()
     inventory = ClusterInventoryBuilder().from_topology(None, topology, host_pairs)
     builder = ClusterPairBuilder(inventory, [inventory], edge_strict=edge_strict)
@@ -185,46 +160,6 @@ def custom_xboard_eid_pairs(topology, custom_pairs, link_mode="all", args=None, 
                                      client_rank_info, server_rank_info, "one-to-many")
             if pair_data:
                 pairs.append(pair_data)
-    return pairs
-
-def custom_xboard_eid_pairs_with_targets(topology, custom_pairs, link_mode="all", args=None):
-    if not args or not has_target_selector(args):
-        return custom_xboard_eid_pairs(topology, custom_pairs, link_mode, args)
-    context = TargetContext(args)
-    manager = SSHOSConnector(args=args, result_processor=ResultProcessor())
-    collector = ClusterInventoryCollector(args, manager)
-    plans = []
-    if str(getattr(args, "local", "") or "").strip():
-        servers, clients = context.get_local_targets(), context.get_targets("cpu_os")
-        for server in servers:
-            key = (server.host, server.port)
-            targets = [target for target in clients if (target.host, target.port) != key]
-            client = manager.connect_client(server)
-            try:
-                plans.append(collector.collect(client, server, targets))
-            finally:
-                client.close()
-    else:
-        plans.append(collector.collect_command_host(context.get_targets("cpu_os")))
-    pairs = []
-    for plan in plans:
-        local_inventory, target_inventories, errors = remote_inventory_parts(plan)
-        if not local_inventory or not target_inventories:
-            pairs.extend(errors)
-            continue
-        builder = ClusterPairBuilder(local_inventory, target_inventories, edge_strict=False)
-        for client_rank, server_rank in custom_pairs:
-            client_rank_info = builder.rank_info(local_inventory, client_rank)
-            server_rank_info = builder.rank_info(local_inventory, server_rank)
-            if not client_rank_info or not server_rank_info:
-                continue
-            links = builder.selected_links(client_rank_info, server_rank_info, link_mode)
-            for link in links:
-                pair_data = builder.pair("local", 0, client_rank, server_rank, link, local_inventory,
-                                         client_rank_info, server_rank_info, "one-to-many")
-                if pair_data:
-                    pairs.append(pair_data)
-        pairs.extend(errors)
     return pairs
 
 def pair_ranks(pair):

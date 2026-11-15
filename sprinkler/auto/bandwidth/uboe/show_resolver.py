@@ -17,9 +17,6 @@ from sprinkler.connect.npu_access import is_local_cpu_host
 
 
 class UboeShowResolver:
-    def __init__(self, executor):
-        self.executor = executor
-
     def fill(self, pairs):
         # Fields (udma / bond ip / execute_eid) are already planned; nothing to resolve.
         return [dict(pair) for pair in pairs]

@@ -2,10 +2,7 @@
 
 import shlex
 
-from sprinkler.auto.bandwidth.planning.eid_pairs import plan_eid_pairs
-from sprinkler.auto.bandwidth.common import command_result, pair_context, pair_side_text, is_xboard_pair, missing_xboard_fields, role_eid, args_link_mode, is_latency_mode, args_mode_list
-from sprinkler.auto.bandwidth.urma.executor import UrmaCommandExecutor
-from sprinkler.auto.bandwidth.urma.show_resolver import UrmaShowResolver
+from sprinkler.auto.bandwidth.common import command_result, pair_context, is_xboard_pair, missing_xboard_fields, role_eid, args_link_mode, is_latency_mode
 from sprinkler.utils.utils import positive_int_or_default
 
 URMA_DEFAULT_OPTS = ("-R 4096 -T 4096 -C 16384 -p 0 -y -s 16777216 -L -l 256 -Q 256 "
@@ -23,9 +20,8 @@ class UrmaPortPlanner:
     PORT_MAX = 65535
     KIND_OFFSETS = {"h2d": 0, "d2h": 64, "d2d": 128, "xboard": 256}
 
-    def __init__(self, port_base, port_stride):
+    def __init__(self, port_base):
         self.port_base = int(port_base)
-        self.port_stride = int(port_stride)
 
     def port(self, pair, index):
         kind = self.kind(pair)
@@ -55,9 +51,8 @@ class UrmaCommandBuilder:
         self.opts = str(getattr(args, "urma_opts", "") or "").strip() or default_urma_opts(self.mode, self.link_mode)
         self.single = bool(getattr(args, "single", False))
         self.port_base = positive_int_or_default(getattr(args, "port_base", 52000), 52000, "-port-base")
-        self.port_stride = positive_int_or_default(getattr(args, "port_stride", 256), 256, "-port-stride")
         self.duration = positive_int_or_default(getattr(args, "duration", 30), 30, "-duration")
-        self.port_planner = UrmaPortPlanner(self.port_base, self.port_stride)
+        self.port_planner = UrmaPortPlanner(self.port_base)
 
     def listener(self, pair, port):
         cmd = (f"urma_perftest {self.mode} "

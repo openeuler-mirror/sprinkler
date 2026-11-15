@@ -3,7 +3,7 @@
 from types import SimpleNamespace
 
 from sprinkler.auto.bandwidth.report import BandwidthReport
-from sprinkler.auto.bandwidth.common import mode_list, xboard_link_mode, XBOARD_MODES, UBOE_MODES, UBOE_XBOARD_MODE, INTRA_MODES, unique_ints, tag_results
+from sprinkler.auto.bandwidth.common import mode_list, xboard_link_mode, XBOARD_MODES, UBOE_MODES, UBOE_XBOARD_MODE, INTRA_MODES, unique_ints, tag_results, parse_pair_spec
 from sprinkler.auto.bandwidth.planning.eid_pairs import pair_ranks as plan_pair_ranks, partition_executable_pairs, plan_eid_pairs
 from sprinkler.auto.bandwidth.planning.ping_check import PingCheckRunner, PingPrecheck
 from sprinkler.auto.bandwidth.urma.results import UrmaBandwidthResultView
@@ -13,10 +13,6 @@ from sprinkler.base.log import RunLog
 from sprinkler.base.ranges import parse_range
 
 CHECK_ID = "urma_bandwidth"
-
-def parse_pair_spec(text):
-    from sprinkler.auto.bandwidth.common import parse_pair_spec as common_parse
-    return common_parse(text)
 
 class UrmaBandwidthRequest:
     def __init__(self, args):
@@ -84,6 +80,24 @@ class UrmaBandwidthRequest:
             raise ValueError(f"{label} conflicts with -urma-bandwidth positional value: {value}")
         setattr(self.args, name, value)
 
+def ping_rank_spec(args):
+    """h2d 预检的 rank 范围。
+
+    仅 d2d 模式且指定 -pair 时，只 ping 参与打流的卡；
+    显式 -rank（命令行参数或 -urma-bandwidth 位置参数）优先；
+    混合模式（如 -mode all / h2d,d2d）保持完整 -rank 范围，
+    因为 h2d/d2h 阶段也要用它选卡。
+    """
+    rank_spec = str(getattr(args, "rank", "") or "")
+    pair_spec = str(getattr(args, "pair_spec", "") or "").strip()
+    if not pair_spec or list(getattr(args, "bandwidth_modes", None) or []) != ["d2d"]:
+        return rank_spec
+    from sprinkler.utils.utils import argv_has_flag
+    if argv_has_flag("-rank") or rank_spec not in ("", "0-7"):
+        return rank_spec
+    ranks = unique_ints(rank for pair in parse_pair_spec(pair_spec) for rank in pair)
+    return ",".join(str(rank) for rank in ranks)
+
 def run_urma_bandwidth(args, run_log):
     if not getattr(args, "bandwidth_modes", None):
         UrmaBandwidthRequest(args).apply()
@@ -104,6 +118,7 @@ def run_urma_bandwidth(args, run_log):
     if mode_values[0] in XBOARD_MODES or (mode_values == ["d2d"] and has_xboard_pair):
         return run_local_xboard_bandwidth(args, run_log)
     ping_args = SimpleNamespace(**{**vars(args), "mode": "h2d"})
+    ping_args.rank = ping_rank_spec(args)
     _, ranks, pairs = plan_eid_pairs(ping_args, run_log)
     run_log.info(f"ping_phase=h2d rank={','.join(str(rank) for rank in ranks)} pair_total={len(pairs)}")
     passed_pairs, ping_failed = PingPrecheck(ping_args, run_log, PingCheckRunner).run(pairs)

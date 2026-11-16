@@ -1,9 +1,9 @@
 """Pair construction, validation, and result utilities."""
 
 from sprinkler.auto.bandwidth.common.utils import (
-    PAIR_DEFAULTS, INTRA_MODES, XBOARD_MODES, int_value, unique_ints, text_value,
+    PAIR_DEFAULTS, int_value, unique_ints, text_value,
     PAIR_CONTEXT_FIELDS, XBOARD_PAIR_REQUIRED_FIELDS,
-    pair_matches_link_mode, normalize_link_mode,
+    pair_matches_link_mode,
 )
 
 def pair_result(kind, scope, runner, client=None, server=None, ok=True, reason="", rc=None, error_type="", **extra):
@@ -170,15 +170,25 @@ def validate_xboard_pairs(pairs, fields=None, ranks=None, link_mode="all", clien
 def client_machine(pair):
     return str((pair or {}).get("client_machine") or "").strip().upper()
 
-def ranks_from_pairs(pairs):
-    return unique_ints(rank for pair in pairs for rank in pair_ranks(pair))
+def xboard_rank_pairs(clients, servers, same_plane=False, all2all=False, machine_index=0):
+    """按 xboard 映射语义生成 (client_rank, server_rank) 对。
 
-def pair_ranks(pair):
-    if isinstance(pair, (list, tuple)):
-        return [int_value(v) for v in pair]
-    client = int_value(pair.get("client_rank"))
-    server = int_value(pair.get("server_rank"))
-    return [v for v in [client, server] if v is not None]
+    clients 为 peer 机器上的卡 rank，servers 为本地/目标卡 rank；
+    machine_index 仅在 all2all + same_plane 时用于按机器顺序取对应 server。
+    """
+    clients = [int(client) for client in clients]
+    servers = [int(server) for server in servers]
+    if all2all and same_plane:
+        if machine_index >= len(servers):
+            return []
+        server = servers[machine_index]
+        return [(client, server) for client in clients or [server]]
+    if all2all:
+        return [(client, server) for server in servers for client in clients or [server]]
+    if same_plane:
+        return [(rank, rank) for rank in servers]
+    server = servers[0] if servers else 0
+    return [(client, server) for client in clients or [server]]
 
 def command_result(target="", host="", cmd="", ok=True, rc=0, error_type="", stdout="", stderr="", elapsed=0.0,
                    backend="planner", port=0, **extra):

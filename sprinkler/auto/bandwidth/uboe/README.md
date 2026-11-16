@@ -102,7 +102,7 @@
 | `uboe_side(rank, target, machine="local")` | 构造单侧字典：`execute_eid`（登录地址）+ `bond_ip`（uboe ip）+ `udma` |
 | `build_uboe_pair(client_rank, server_rank, targets)` | 组一个 client→server pair；缺 bond ip 标 skipped |
 | `plan_uboe_pairs(args)` | **主入口**：自动发现 targets → 返回 `(ranks, pairs)`；支持 `-pair 0-1` 或 `-rank`（默认全部已发现 rank 依次相连） |
-| `parse_pair_spec_pairs(pair_spec)` | 解析 `0-1,2-3` 组对规格 |
+| `parse_pair_spec(pair_spec)` | 解析 `0-1,2-3` 组对规格（common 提供） |
 
 ---
 
@@ -191,7 +191,7 @@
 | 1 | `plan_uboe_pairs` 规划 pairs |
 | 2 | `env.precheck_pairs_for_traffic(..., run_log)` device 侧预检，只让就绪 pair 打流 |
 | 3 | 过滤缺失 `UBOE_TRAFFIC_FIELDS` 的 pair |
-| 4 | `UrmaTrafficRunner(args, run_log, command_builder=UboeCommandBuilder(args), show_resolver=UboeShowResolver(executor)).run(...)` 打流（内部打印命令 + 计时 + collect） |
+| 4 | `UrmaTrafficRunner(args, run_log, command_builder=UboeCommandBuilder(args), show_resolver=UboeShowResolver()).run(...)` 打流（内部打印命令 + 计时 + collect） |
 | 5 | 返回 `env_failed + traffic_results`（tag `bandwidth_phase="uboe"`、`ping=True`） |
 
 > UBOE 从各卡 device 侧打流，**不从 host 预 ping bond ip**（避免误判门槛）。

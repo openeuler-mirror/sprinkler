@@ -69,9 +69,6 @@ class RootInfoTopology:
     def groups(self):
         return [list(group) for group in self.rank_groups]
 
-    def has_separate_groups(self):
-        return len(self.rank_groups) > 1
-
     def group_of(self, rank):
         value = int(rank)
         return next((index for index, group in enumerate(self.rank_groups) if value in group), None)
@@ -105,15 +102,6 @@ class RootInfoTopology:
                  "UBG": entry.link2, "SUPERNODE": entry.link2, "CLUSTER": entry.link2}
         eid_hex = links.get(link_name, entry.link0)
         return self.route_endpoint("NPU", rank, eid_hex), link_name
-
-    def intra_d2d_pairs(self, ranks, mode="one-to-many", master_rank=None):
-        pairs = []
-        for src, dest in self.index_pairs(ranks, mode=mode, master_rank=master_rank):
-            source = self.route_endpoint("NPU", src, self.adjacency.get((int(src), int(dest)), ""))
-            destination = self.route_endpoint("NPU", dest, self.adjacency.get((int(dest), int(src)), ""))
-            link = "topo" if source.eid32 and destination.eid32 else "no_topo_mapping"
-            pairs.append((source, destination, link))
-        return pairs
 
     @staticmethod
     def route_endpoint(role, rank, eid_hex):

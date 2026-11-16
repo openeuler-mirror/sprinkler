@@ -12,17 +12,13 @@ Both come from `uboe.discovery.collect_uboe_targets` unless `-bond-ip` overrides
 ip. Cards without a bond/uboe ip cannot run UBOE traffic and are skipped.
 """
 
-from sprinkler.auto.bandwidth.common import uboe_pair_result, parse_pair_spec, unique_ints
+from sprinkler.auto.bandwidth.common import uboe_pair_result, parse_pair_spec, unique_ints, xboard_rank_pairs
 from sprinkler.auto.bandwidth.topology.rootinfo import RootInfoTopology
 from sprinkler.auto.bandwidth.uboe.discovery import collect_uboe_targets
 from sprinkler.base.ranges import parse_range
 
 # Parameter-plane DMA channel per card (wiki command uses udmac0d1e3, the eth3 bond entry).
 UBOE_DEFAULT_UDMA = "udmac0d1e3"
-
-
-def parse_pair_spec_pairs(pair_spec):
-    return parse_pair_spec(pair_spec)
 
 
 def uboe_side(rank, target, machine="local", cpu_host=""):
@@ -61,7 +57,7 @@ def plan_uboe_pairs(args):
     if pair_spec:
         ranks = []
         pairs = []
-        for client_rank, server_rank in parse_pair_spec_pairs(pair_spec):
+        for client_rank, server_rank in parse_pair_spec(pair_spec):
             pairs.append(build_uboe_pair(client_rank, server_rank, targets))
             ranks.extend((client_rank, server_rank))
         return unique_ints(ranks), pairs
@@ -84,25 +80,6 @@ def peer_cpu_targets(args):
     from sprinkler.connect.targets import TargetContext
     context = TargetContext(args)
     return list(context.get_targets("cpu_os"))
-
-
-def xboard_rank_pairs(clients, servers, same_plane, all2all, machine_index=0):
-    """Mirror `ClusterPairBuilder.rank_pairs` mapping semantics for uboe-xboard.
-
-    clients = peer machine's card ranks, servers = local card ranks. `machine_index`
-    orders peer machines (only meaningful for all2all+same_plane).
-    """
-    if all2all and same_plane:
-        if machine_index >= len(servers):
-            return []
-        server = servers[machine_index]
-        return [(client, server) for client in clients or [server]]
-    if all2all:
-        return [(client, server) for server in servers for client in clients or [server]]
-    if same_plane:
-        return [(rank, rank) for rank in servers]
-    server = servers[0] if servers else 0
-    return [(client, server) for client in clients or [server]]
 
 
 def build_uboe_xboard_pair(client_rank, server_rank, client_target, server_target,
@@ -161,7 +138,7 @@ def plan_uboe_xboard_pairs(args):
     pair_spec = str(getattr(args, "xboard_pair_spec", "") or "").strip()
     if pair_spec:
         ranks, pairs = [], []
-        for client_rank, server_rank in parse_pair_spec_pairs(pair_spec):
+        for client_rank, server_rank in parse_pair_spec(pair_spec):
             client_cpu_host, client_machine, remote_targets = _peer_host_for_rank(peers, client_rank)
             pairs.append(build_uboe_xboard_pair(client_rank, server_rank, remote_targets.get(client_rank),
                                                 targets.get(server_rank), client_machine, client_cpu_host))

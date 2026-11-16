@@ -8,14 +8,12 @@ OS source path and stream the binary over SSH::
 
 Source path resolution order:
 
-1. ``-serdes-src`` CLI override
-2. ``sprinkler_config/config.conf`` -> ``SERDES_TOOL_PATH``
-3. interactive prompt (the answer is saved back to the config file)
+1. ``sprinkler_config/config.conf`` -> ``SERDES_TOOL_PATH``
+2. interactive prompt (the answer is saved back to the config file)
 """
 
 import shlex
 import subprocess
-from pathlib import Path
 
 from sprinkler.config.config_manager import SerdesConfigManager
 from sprinkler.connect.npu_access import npu_os_command, npu_ssh_argv
@@ -59,25 +57,17 @@ def upload_tool(source, execute_eid, target_path, timeout=UPLOAD_TIMEOUT):
     return False, detail or f"rc={completed.returncode}"
 
 
-def resolve_source(args, run_log=None):
+def resolve_source(run_log=None):
     """Return the CPU OS path of ``serdestool.bin``; empty when unavailable."""
-    override = str(getattr(args, "serdes_src", "") or "").strip()
-    if override:
-        path = Path(override).expanduser()
-        if path.is_file():
-            return str(path)
-        _log(run_log, "FAIL", f"-serdes-src file not found: {path}")
-        return ""
-
     path = SerdesConfigManager().get_serdes_path()
     if not path:
         _log(run_log, "FAIL", "no CPU OS serdestool path configured; "
-                              "set -serdes-src or SERDES_TOOL_PATH in sprinkler_config/config.conf")
+                              "set SERDES_TOOL_PATH in sprinkler_config/config.conf")
         return ""
     return path
 
 
-def ensure_tools(items, args, npu_path, run_log=None):
+def ensure_tools(items, npu_path, run_log=None):
     """Ensure ``npu_path`` exists on every NPU, uploading it where needed.
 
     Items that stay unavailable get ``item["error"]`` set; the caller turns
@@ -94,7 +84,7 @@ def ensure_tools(items, args, npu_path, run_log=None):
     if not missing:
         return items
 
-    source = resolve_source(args, run_log)
+    source = resolve_source(run_log)
     if not source:
         reason = f"serdestool missing on NPU OS ({npu_path}) and no CPU OS source configured"
         for item in missing:

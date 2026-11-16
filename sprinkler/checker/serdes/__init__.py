@@ -4,9 +4,8 @@
 执行 ``serdestool.bin pn``，按“NPU × 端口 × tx/rx”渲染极性矩阵。
 
 ``serdestool.bin`` 约定位于 NPU OS 的 ``/home/serdestool.bin``；缺失时由
-:mod:`sprinkler.checker.serdes.tool` 从 CPU OS 上传，源路径取
-``-serdes-src`` / ``sprinkler_config/config.conf`` 的 ``SERDES_TOOL_PATH``
-或交互式输入。
+:mod:`sprinkler.checker.serdes.tool` 从 CPU OS 上传，源路径读取
+``sprinkler_config/config.conf`` 的 ``SERDES_TOOL_PATH``，未配置时交互式输入。
 
 入口：
 

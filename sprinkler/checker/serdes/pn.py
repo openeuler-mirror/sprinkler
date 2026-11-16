@@ -173,10 +173,8 @@ class PnCheckRunner:
 
         self.ports = resolve_ports(self.mode, getattr(args, "pn_ports", "all"))
         self.directions = list(DIRECTIONS)
-        self.serdes_bin = str(getattr(args, "serdes_bin", DEFAULT_SERDES_BIN)
-                              or DEFAULT_SERDES_BIN)
-        self.timeout = positive_int_or_default(
-            getattr(args, "serdes_timeout", DEFAULT_TIMEOUT), DEFAULT_TIMEOUT, "-serdes-timeout")
+        self.serdes_bin = DEFAULT_SERDES_BIN
+        self.timeout = DEFAULT_TIMEOUT
 
     @property
     def lanes(self):
@@ -260,16 +258,6 @@ class PnCheckRunner:
             "stderr": stderr.strip(),
             "elapsed": round(float(outcome.get("elapsed") or 0), 3),
         }
-
-    def plan_commands(self, item):
-        lines = []
-        for port in self.ports:
-            macro, lane_start, lanes = port_layout(self.mode, port)
-            for direction in self.directions:
-                command = build_command(self.serdes_bin, self.udie, direction,
-                                        macro, lane_start, lanes)
-                lines.append(f"[dry-run] {item['target']} {command}")
-        return lines
 
     def _execute_remote(self, eid, command, timeout):
         started = time.time()
@@ -368,20 +356,10 @@ def pn_check_execute(args, npu_items=None, execute=None, manage_tools=None):
         run_log.finish_log_dir()
         return 1
 
-    if getattr(args, "pn_dry_run", False):
-        total = 0
-        for item in items:
-            for line in runner.plan_commands(item):
-                run_log.info(line)
-                total += 1
-        run_log.info(f"dry_run npu_total={len(items)} command_total={total}")
-        run_log.finish_log_dir()
-        return 0
-
     if manage_tools is None:
         manage_tools = npu_items is None
     if manage_tools:
-        ensure_tools(items, args, runner.serdes_bin, run_log)
+        ensure_tools(items, runner.serdes_bin, run_log)
 
     rows = runner.run(items)
     run_log.write_results(rows)

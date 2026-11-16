@@ -332,18 +332,6 @@ class ArgumentGroups:
         group.add_argument("-ports", dest="pn_ports", default="all",
                            help="Ports to query for -pn-check, e.g. 0-3,5 or all "
                                 "(x2: 0-19, x4: 0-9; default: all)")
-        group.add_argument("-serdes-bin", "-serdes_bin", dest="serdes_bin",
-                           default="/home/serdestool.bin",
-                           help="serdestool path on the NPU OS (default: /home/serdestool.bin)")
-        group.add_argument("-serdes-src", "-serdes_src", dest="serdes_src", default="",
-                           help="serdestool.bin path on the CPU OS (upload source when the NPU OS "
-                                "copy is missing); default: SERDES_TOOL_PATH in "
-                                "sprinkler_config/config.conf, or an interactive prompt")
-        group.add_argument("-serdes-timeout", "-serdes_timeout", dest="serdes_timeout",
-                           type=argparse_positive_int, default=30,
-                           help="Per-command timeout in seconds (default: 30)")
-        group.add_argument("-pn-dry-run", "-pn_dry_run", dest="pn_dry_run", action="store_true",
-                           help="Print the serdestool commands without executing them")
 
     @staticmethod
     def add_path(parser):

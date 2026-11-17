@@ -14,7 +14,7 @@ BMC Redfish 直接获取的部分（去掉 RackD 私有纳管字段）。
 - CLI：``sprinkler -status-query <目标参数> [选项]``，即
   ``status_query_execute(args)``，结果写入 results.json / results.csv。
 - 复用：``collect_status(targets, ...)`` 对给定目标列表直接巡检（供
-  Streamlit 页面调用）。
+  已有目标列表的调用方复用）。
 """
 
 from sprinkler.checker.status.parsers import DeviceStatusInfo, DeviceStatusParser

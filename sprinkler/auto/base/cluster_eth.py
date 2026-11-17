@@ -2,7 +2,6 @@ from sprinkler.base.log import RunLog
 from sprinkler.connect.connection_runner import create_runner
 from sprinkler.connect.targets import TargetContext
 from sprinkler.utils.utils import default_config_dir
-from sprinkler.connect.connect import CONNECTION_MODES
 
 GET_IF_COMMAND = "ip route show default | awk '{for(i=1;i<=NF;i++) if($i==\"dev\") print $(i+1)}'"
 
@@ -21,7 +20,7 @@ def get_interfaces_from_nodes(args, run_log: RunLog):
     try:
         results = runner.run(targets=targets, commands=[GET_IF_COMMAND])
     except Exception as exc:
-        run_log.fail_error(CONNECTION_MODES["cpu_os"]["target_method"], exc)
+        run_log.fail_error("cpu_os", exc)
         return []
 
     for result in results:

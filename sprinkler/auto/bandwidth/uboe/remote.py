@@ -16,7 +16,7 @@ import time
 
 from sprinkler.auto.bandwidth.common.route_conf import RouteConf
 from sprinkler.auto.bandwidth.common.utils import int_value, DEFAULT_ROOTINFO
-from sprinkler.config.host_device_pairs import parse_host_device_pairs_text
+from sprinkler.config.host_device_pairs import parse_host_device_pairs_text, host_device_pairs_command
 from sprinkler.connect.npu_access import npu_os_command, is_local_cpu_host
 
 REMOTE_DEVICE_TIMEOUT = 15
@@ -146,12 +146,7 @@ def remote_device_pairs(executor, cpu_host, device_ids=None, rootinfo_text=None)
     """
     device_ids = list(device_ids if device_ids is not None else remote_device_ids(rootinfo_text))
     ranks_map = remote_device_ranks(rootinfo_text)
-    devices = " ".join(str(device) for device in device_ids)
-    command = (f"for dev in {devices}; do "
-               "echo $dev > /proc/asdrv_ub/dev_id 2>/dev/null || continue; "
-               "echo __SPRINKLER_DEV__ $dev; "
-               "cat /proc/asdrv_ub/pair_info 2>/dev/null || true; done; true")
-    result = executor.run(cpu_host, command)
+    result = executor.run(cpu_host, host_device_pairs_command(device_ids))
     if not result.get("ok"):
         return {}
     raw = parse_host_device_pairs_text(result.get("stdout"))

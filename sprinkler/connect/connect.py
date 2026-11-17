@@ -15,6 +15,8 @@ CONNECTION_MODES = {
     "roce_com": {"connection_type": "telnet_com", "target_type": "roce_com"},
     "smn_os": {"connection_type": "ssh_os", "target_type": "smn_os"},
     "smn_bmc": {"connection_type": "ssh_os", "target_type": "smn_bmc"},
+    "5808_front": {"connection_type": "ssh_switch", "target_type": "5808_front"},
+    "npu_os": {"connection_type": "npu_os", "target_type": "npu_os"},
     # SMN serial port run commands (handled directly via smn_1213_bmc_execute)
     "cpu_1213_smn": {"connection_type": "smn_1213_bmc"},
     "npu_1213_smn": {"connection_type": "smn_1213_bmc"},

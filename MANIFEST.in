@@ -1,0 +1,6 @@
+include README.md
+recursive-include sprinkler *.sh
+recursive-include sprinkler *.txt
+recursive-include sprinkler *.csv
+recursive-include sprinkler *.conf
+recursive-include sprinkler *.yaml

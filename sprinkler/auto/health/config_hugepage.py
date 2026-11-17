@@ -3,6 +3,7 @@
 功能: 开启CPU大页内存(HugePages), 不配置寄存器
 """
 
+import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,6 +27,19 @@ class HugePageResult:
     is_configured: bool = False
 
 
+def read_hugepages_count(path: str = "/proc/sys/vm/nr_hugepages"):
+    """读取大页数量，读取失败时返回 None"""
+    try:
+        return int(Path(path).read_text().strip())
+    except (OSError, PermissionError, ValueError):
+        return None
+
+
+def hugepages_target(count=None) -> int:
+    """目标页数，未指定时读取 HUGEPAGES_COUNT，默认 8192"""
+    return int(count) if count is not None else int(os.getenv("HUGEPAGES_COUNT", "8192"))
+
+
 class HugePageManager:
     """大页内存管理器"""
 
@@ -42,6 +56,13 @@ class HugePageManager:
         self.log.info("开始配置CPU大页内存")
 
         result = HugePageResult()
+
+        current = self._current_count()
+        if current is not None and current >= self.config.hugepages_count:
+            result.is_configured = True
+            self.log.ok(f"大页内存已配置: nr_hugepages = {current} (>= {self.config.hugepages_count})，跳过配置")
+            self.log.info("=" * 40)
+            return result
 
         result.meminfo_before = self._read_meminfo()
         self.log.info("配置前内存信息:")
@@ -68,6 +89,13 @@ class HugePageManager:
             self.log.fail("CPU大页内存配置失败")
 
         return result
+
+    def _current_count(self):
+        """
+        读取当前大页数量
+        返回: 当前页数，读取失败时返回 None
+        """
+        return read_hugepages_count(self.config.nr_hugepages_path)
 
     def _read_meminfo(self) -> str:
         """
@@ -145,6 +173,25 @@ class HugePageManager:
             result.is_configured = False
 
 
+def hugepages_configured(count=None) -> bool:
+    """当前大页数量是否已达到目标值"""
+    current = read_hugepages_count()
+    return current is not None and current >= hugepages_target(count)
+
+
+def ensure_hugepages(log, count=None) -> bool:
+    """
+    确保本机大页数量达到目标值，已配置则跳过
+    参数:
+        log: RunLog 对象
+        count: 目标页数，None 时读取 HUGEPAGES_COUNT，默认 8192
+    返回:
+        是否已配置成功
+    """
+    manager = HugePageManager(HugePageConfig(hugepages_count=hugepages_target(count)), log)
+    return manager.configure().is_configured
+
+
 def config_hugepage_check(args) -> int:
     """
     配置CPU大页内存主入口函数
@@ -156,11 +203,4 @@ def config_hugepage_check(args) -> int:
     log = RunLog(args, "config_hugepage")
     print(f"日志目录: {log.path}")
 
-    config = HugePageConfig(
-        hugepages_count=int(__import__("os").getenv("HUGEPAGES_COUNT", "8192")),
-    )
-
-    manager = HugePageManager(config, log)
-    result = manager.configure()
-
-    return 0 if result.is_configured else 1
+    return 0 if ensure_hugepages(log) else 1

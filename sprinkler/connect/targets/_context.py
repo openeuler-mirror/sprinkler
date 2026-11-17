@@ -24,8 +24,14 @@ class TargetContext:
         "cpu_os": 22, "cpu_bmc": 22, "cpu_1213": 22,
         "npu_bmc": 22, "npu_1213": 22, "sfu_bmc": 22,
         "sfu_com": 23, "roce_bmc": 22, "roce_com": 23,
-        "smn_os": 22, "smn_bmc": 22,
+        "smn_os": 22, "smn_bmc": 22, "5808_front": 22,
     }
+
+    # 仅支持 -ip 直连的目标类型（暂不解析 xlsx 页签）。
+    DIRECT_ONLY_TARGETS = {"5808_front"}
+
+    # NPU OS：目标为 npu<rank>，本机系统 ssh 直连；给 -ip 时经该 CPU OS 跳板。
+    NPU_OS_TARGET = "npu_os"
 
     def __init__(self, args):
         self.args = args
@@ -41,6 +47,10 @@ class TargetContext:
 
     def get_targets(self, target_type: str):
         target_type = self._target_type(target_type)
+        if target_type == self.NPU_OS_TARGET:
+            return self._npu_os_targets()
+        if target_type in self.DIRECT_ONLY_TARGETS:
+            return self._direct_only_targets(target_type)
         if target_type not in self.TARGET_SPECS:
             raise ValueError(f"target type {target_type or '<empty>'} is not supported")
         if self.remote_plan:
@@ -102,6 +112,29 @@ class TargetContext:
                 builder = TargetBuilder(selector.user, "")
                 self._local_targets = self._build_targets_for(selector, "cpu", builder.cpu_os)
             return list(self._local_targets)
+
+    def _direct_only_targets(self, target_type):
+        if not self.direct_values:
+            raise ValueError(f"{target_type.replace('_', '-')} 需通过 -ip 指定管理 IP")
+        return self._direct_targets(target_type)
+
+    def _npu_os_targets(self):
+        ranks = parse_range(str(getattr(self.args, "rank", "") or "0-7"))
+        if not ranks:
+            raise ValueError("-rank 不能为空")
+        if not self.direct_values:
+            return [ConnectionTarget(
+                name=f"npu{rank}", host=f"npu{rank}", user="root",
+                meta={"kind": self.NPU_OS_TARGET, "rank": rank, "source": "local"})
+                for rank in ranks]
+        return [
+            ConnectionTarget(
+                name=f"npu{rank}", host=item["host"], port=item["port"] or 22,
+                user=item["user"], password=item["password"],
+                meta={"kind": self.NPU_OS_TARGET, "rank": rank, "source": "cli_ip"})
+            for item in self.direct_values
+            for rank in ranks
+        ]
 
     def _node_ip_values(self, args):
         node_text = str(getattr(args, "node", "") or "").strip()

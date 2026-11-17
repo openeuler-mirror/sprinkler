@@ -2,14 +2,12 @@
 
 import time
 from concurrent.futures import ThreadPoolExecutor
-from decimal import Decimal, ROUND_HALF_UP
 
 from sprinkler.auto.bandwidth.urma.results import traffic_pair_result, fail_pair, empty_process_result, machine_pair, has_link_distinction, display_link, args_link_mode, DEFAULT_SAMPLE_TAIL, DEFAULT_START_STAGGER_SECONDS, DEFAULT_LISTENER_READY_SECONDS
 from sprinkler.auto.bandwidth.urma.commands import UrmaCommandBuilder
 from sprinkler.auto.bandwidth.urma.executor import UrmaProcessSession, UrmaStreamLog, UrmaCommandExecutor
 from sprinkler.auto.bandwidth.urma.show_resolver import UrmaShowResolver
 from sprinkler.auto.bandwidth.common import pair_target, compact_target_text, pair_side_text, grouped
-from sprinkler.base.results import CommandResultView
 from sprinkler.utils.utils import positive_int_or_default
 
 def log_traffic_plan(run_log, command_builder, link_mode, pairs):
@@ -169,36 +167,22 @@ class UrmaTrafficRunner:
                 log_traffic_plan(self.run_log, self.command_builder, self.link_mode, resolved)
         return resolved
 
-    def run(self, pairs):
+    def run(self, pairs, silent=False):
         resolved = self.show_resolver.fill(pairs)
         if self.run_log is not None:
             failed = sum(1 for pair in resolved if not pair.get("ok", True))
             if failed:
                 self.run_log.log("WARN", f"urma_show_failed={failed} pair_total={len(resolved)}")
-            if resolved:
+            if resolved and not silent:
                 log_traffic_plan(self.run_log, self.command_builder, self.link_mode, resolved)
-        sessions, results = self.start_sessions(resolved)
-        active = [session for session in sessions if results[session.index] is None]
-        if active:
-            duration = positive_int_or_default(getattr(self.args, "duration", 30), 30, "-duration")
-            if self.run_log is not None:
-                self.run_log.info(f"traffic_measure_start active={len(active)} duration={duration}s "
-                                  f"sample_tail={DEFAULT_SAMPLE_TAIL}")
-            try:
-                time.sleep(duration)
-            finally:
-                self.run_concurrent(active, lambda session: session.stop())
-                for session in active:
-                    self.collect_session(session, results)
-        results = [result for result in results if result is not None]
-        if self.run_log is not None:
-            for result in results:
-                self.run_log.write_target_results(result.get("target") or "urma", [result])
-        return results
+        return self._run_resolved(resolved, silent=silent)
 
     def execute(self, resolved, silent=False):
         if not resolved:
             return []
+        return self._run_resolved(resolved, silent=silent)
+
+    def _run_resolved(self, resolved, silent=False):
         sessions, results = self.start_sessions(resolved, silent=silent)
         active = [session for session in sessions if results[session.index] is None]
         if active:

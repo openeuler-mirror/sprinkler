@@ -11,7 +11,6 @@ from sprinkler.auto.base.check_power import check_local as power_check_local
 from sprinkler.auto.base.check_power import check_remote as power_check_remote
 from sprinkler.base.log import RunLog
 from sprinkler.connect.connection_runner import create_runner
-from sprinkler.connect.connect import CONNECTION_MODES
 from sprinkler.connect.targets import TargetContext
 
 
@@ -61,7 +60,7 @@ def cluster_env_check(args, check_power: bool = False):
             try:
                 node_result = future.result()
             except Exception as exc:
-                run_log.fail_error(CONNECTION_MODES["cpu_os"]["target_method"], exc)
+                run_log.fail_error("cpu_os", exc)
                 failed_nodes.append(node_name)
                 continue
 

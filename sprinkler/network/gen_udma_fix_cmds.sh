@@ -33,7 +33,9 @@
 # ==============================================================================
 
 # 配置免密操作
-bash "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/network/no_password.sh"  2>&1 | grep -E --line-buffered "ERROR|WARN|INFO"
+# [DEPRECATED] 引用文件已不存在，功能由 sprinkler -no-pass 取代
+# bash "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/network/no_password.sh"  2>&1 | grep -E --line-buffered "ERROR|WARN|INFO"
+:  # no-op（原命令已下线）
 
 ROUTE_CONF="${ROUTE_CONF:-/lib/route.conf}"
 SSH_USER="${SSH_USER:-root}"

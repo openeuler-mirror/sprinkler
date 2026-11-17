@@ -135,7 +135,6 @@ class ArgumentGroups:
         group = parser.add_argument_group(title='Environment Check')
         group.add_argument("-auto", "--auto", nargs='?', const="L2", choices=["L1", "L2"], metavar="LEVEL",
                            help="Open Automatic Environmental Health Check Func")
-        group.add_argument("-set-rc", "-set_rc", action='store_true', help="Set rc")
         group.add_argument("-enable-env", "-enable_env", action='store_true', help="enable env config is ok")
         group.add_argument("-env-check", "-env_check", action='store_true', help="Check env")
         group.add_argument("-cpu-hugepage", "-cpu_hugepage", action='store_true', help="Configure CPU hugepages memory")
@@ -148,16 +147,13 @@ class ArgumentGroups:
     def add_device_ops(parser):
         group = parser.add_argument_group(title='Device Operations')
         group.add_argument("-npu-smi", "-npu_smi", action='store_true', help="quick npu smi memory watch")
-        group.add_argument("-read-dev", "-read_dev", action='store_true', help="Read device")
-        group.add_argument("-write-dev", "-write_dev", action='store_true', help="Write device")
         group.add_argument("-reg-rw", "-reg_rw", action='store_true', help="Register read/write")
         group.add_argument("-reg-ids", "-reg_ids", type=str, default="0,1,2,3,4,5,6,7", help="Register IDs")
-        group.add_argument("-npu-lock", "-npu_lock", action='store_true', help="NPU lock")
         group.add_argument("-check-eth", "-check_eth", action='store_true', help="Check ethernet")
         group.add_argument("-cluster-eth", "-cluster-eth", action='store_true', help="Cluster ethernet check")
         group.add_argument("-check-cpu-mem", "-check_cpu_mem", action='store_true', help="Check CPU memory")
-        group.add_argument("-execute-npu", "-execute_npu", action='store_true', help="Execute on NPU")
-        group.add_argument("-npu-root", "-npu_root", action='store_true', help="open npu root")
+        group.add_argument("-execute-npu", "-execute_npu", type=str, nargs="?", const="", default=None,
+                           help="Execute command set on Npu (no path: ask interactively)")
         group.add_argument("-check-chip-delay", "-check_chip_delay", action='store_true', help="Query chip latency on each device")
         group.add_argument("-device-online", "-device_online", action='store_true', help="Check device online")
         group.add_argument("-check-firewall", "-check_firewall", action='store_true', help="Check firewalld/iptables, prompt to stop if active")
@@ -192,8 +188,9 @@ class ArgumentGroups:
         group.add_argument("-stream-control", dest="check_npu_stream_control", action="store_true",
                            help="check NPU stream control register via devmem")
         group.add_argument("-urma-cmd", dest="urma_cmd", action="store_true", help="print URMA listener/client commands")
-        group.add_argument("-d2d-mode", choices=["many-to-one", "one-to-many"], default="many-to-one",
-                           help="D2D pair expansion mode")
+        group.add_argument("-d2d-mode", choices=["many-to-one", "one-to-many", "alltoall"], default="many-to-one",
+                           help="D2D pair expansion mode (alltoall: every NPU sends to every other NPU; "
+                                "add -single to drop -B)")
         group.add_argument("-same-plane", dest="same_plane", action="store_true", help="use same-plane rank mapping")
         group.add_argument("-link-mode", default="all", help="xboard link selector: all, both, l0, or l1")
         group.add_argument("-urma-mode", default="write_bw", help="urma_perftest mode")
@@ -261,9 +258,7 @@ class ArgumentGroups:
         group.add_argument("-get-route", "-get_route", action='store_true', help="Restore the routing configuration")
         group.add_argument("-gen-route", "-gen_route", action='store_true', help="Auto gen route.conf")
         group.add_argument("-sync-time", "-sync_time", action='store_true', help="Sync system time from RTC")
-        group.add_argument("-test-snr", "-test_snr", action='store_true', help="Auto test snr")
         group.add_argument("-npu-ip", "-npu_ip", action='store_true', help="Show all npu ip")
-        group.add_argument("-p2p-sendrecv", "-p2p_sendrecv", action='store_true', help="Auto check p2p send/recv bandwidth")
 
     @staticmethod
     def add_utils(parser):
@@ -274,11 +269,6 @@ class ArgumentGroups:
         group.add_argument("-get-power", "-get_power", action='store_true', help="get rated power")
         group.add_argument("-get-root", "-get_root", action='store_true', help="Get root configuration")
         group.add_argument("-test-rate-file", type=str, help="Power test file path for hp-check")
-        group.add_argument("-jetty", action='store_true', help="jetty test")
-        group.add_argument("-jetty-model", "-jm", type=str, choices=["cpu", "npu"], default="cpu",
-                           help="Select the jetty mode")
-        group.add_argument("-udma-id", type=int, default=3, help="Set udma id for jetty test")
-        group.add_argument("-ssh-ip", type=str, help="Set ssh ip for jetty test")
         group.add_argument("-single-operator", "-single_operator", action='store_true', help="Check hccl single operator")
         group.add_argument("-mpirun-bw", "-mpirun_bw", action='store_true', help="Check mpirun bandwidth test")
         group.add_argument("-test-gpt", "-test_gpt", action='store_true', help="Auto test gpt")
@@ -408,6 +398,11 @@ class ArgumentGroups:
         group.add_argument('-roce-com', dest='roce_com', action='store_true', help="execute commands on RoCE COM targets")
         group.add_argument('-smn-os', dest='smn_os', action='store_true', help="execute commands on SMN OS targets")
         group.add_argument('-smn-bmc', dest='smn_bmc', action='store_true', help="execute commands on SMN BMC targets")
+        group.add_argument('-5808-front', dest='5808_front', action='store_true',
+                           help="execute commands on 5808 front (C-plane) switch via direct SSH (use with -ip)")
+        group.add_argument('-npu-os', dest='npu_os', action='store_true',
+                           help="execute commands on NPU OS via ssh root@npu<rank> "
+                                "(local by default; with -ip jump through that CPU OS)")
         group.add_argument('-sol-ports', dest='sol_ports', type=str, default=None,
                            help="NPU SOL ports to enter, e.g. 3 or 3,5 "
                                 "(default 3,5,7,9,11,13,15,17)")

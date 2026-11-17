@@ -6,8 +6,8 @@ PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 GRANDPARENT_DIR="$(dirname "$(dirname "$(dirname "$PARENT_DIR")")")"
 LOGS_ROOT=${GRANDPARENT_DIR}/sprinkler_logs
 mkdir -p "$LOGS_ROOT"
-source "$SCRIPT_DIR/common.sh"
-. "${PARENT_DIR}/config_util.sh"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../sprinkler/utils/common.sh"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../sprinkler/utils/config_util.sh"
 
 # 全局日志目录变量
 LOGS_ROOT_DIR="$LOGS_ROOT/auto_check_logs"
@@ -435,8 +435,10 @@ run_retry() {
         # 如果还有重试机会，等待一下再重试
         if [ $attempt -lt 3 ] && [ "$success" = false ]; then
             sleep 2
-            if [ "${script_name,,}" = "ping6_check.sh" ]; then
-                bash "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/network/no_password.sh"  2>&1 | grep -E --line-buffered "ERROR|WARN|INFO"
+            if [ "${script_name,,}" = "health/ping6_check.sh" ]; then
+                # [DEPRECATED] 引用文件已不存在，功能由 sprinkler -no-pass 取代
+                # bash "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/network/no_password.sh"  2>&1 | grep -E --line-buffered "ERROR|WARN|INFO"
+                :  # no-op（原命令已下线）
             fi
         fi
     done
@@ -696,7 +698,9 @@ main() {
     log INFO "$AUTO_CHECK_ID" "默认超时时间: ${DEFAULT_TIMEOUT}秒"
     log INFO "$AUTO_CHECK_ID" "检查项日志目录: $LOG_BASE_DIR"  
 
-    bash "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/network/no_password.sh"  2>&1 | grep -E --line-buffered "ERROR|WARN|INFO"
+    # [DEPRECATED] 引用文件已不存在，功能由 sprinkler -no-pass 取代
+    # bash "$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}")")")/network/no_password.sh"  2>&1 | grep -E --line-buffered "ERROR|WARN|INFO"
+    :  # no-op（原命令已下线）
     # 根据级别选择执行的检查脚本
     case "$LEVEL" in
         L1|L1)
@@ -704,7 +708,7 @@ main() {
             log INFO "$AUTO_CHECK_ID" "执行L1级别检查项"
             run_script_with_timeout "env_check.sh" 60        # 前置检查
             run_script_with_timeout "device_online.sh" 60    # 设备在线检查
-            run_retry "ping6_check.sh" 60       # ping检查
+            run_retry "health/ping6_check.sh" 60       # ping检查
             run_script_with_timeout "1213/check_1213_all.sh" 300 # 1213相关：cc包、子卡注册检查
             run_script_with_timeout "n_urma_bandwidth.sh" 640 1  # URMA带宽测试
             ;;
@@ -715,7 +719,7 @@ main() {
             run_script_with_timeout "log_cleanup.sh" 60      # 日志清理
             run_script_with_timeout "env_check.sh" 60
             run_script_with_timeout "device_online.sh" 60
-            run_retry "ping6_check.sh" 60
+            run_retry "health/ping6_check.sh" 60
             run_retry "set_device.sh" 120        # 设置设备
             run_retry "single_operator.sh" 100 1 # 单算子测试
             run_script_with_timeout "mpirun_bandwidth.sh" 150  # MPI带宽测试

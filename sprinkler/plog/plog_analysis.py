@@ -1,10 +1,26 @@
 import pandas as pd
 import re
 
+# 新版故障库表头（故障类型/故障名称/模式编号/关键日志/故障原因/解决方法）到旧字段名的映射
+_COLUMN_ALIASES = {
+    '故障类型': 'env_class',
+    '故障名称': 'pattern_name',
+    '模式编号': 'error_code',
+    '关键日志': 'error_keywords',
+    '故障原因': 'error_cause',
+    '解决方法': 'resolution',
+}
+
 def load_fault_library(csv_path):
     """加载并预处理故障模式库"""
     try:
-        df = pd.read_csv(csv_path)
+        try:
+            df = pd.read_csv(csv_path, dtype=str, encoding='utf-8-sig')
+        except UnicodeDecodeError:
+            df = pd.read_csv(csv_path, dtype=str, encoding='gbk')
+        df = df.rename(columns={c: _COLUMN_ALIASES.get(str(c).strip(), str(c).strip()) for c in df.columns})
+        if 'key_log' not in df.columns:
+            df['key_log'] = df['error_keywords'] if 'error_keywords' in df.columns else ''
         df['error_code'] = df['error_code'].apply(
             lambda x: str(x).strip() if pd.notna(x) and str(x).strip().lower() not in ['nan', 'na', ''] else ''
         )

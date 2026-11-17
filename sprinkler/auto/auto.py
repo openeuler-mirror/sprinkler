@@ -292,6 +292,9 @@ def auto_exec():
     if args.check_npu_stream_control:
         from sprinkler.auto.base import check_npu_stream_control
         check_npu_stream_control.check_npu_stream_control_execute(args)
+    if getattr(args, "pn_check", False):
+        from sprinkler.checker.serdes import pn_check_execute
+        pn_check_execute(args)
     if args.urma_cmd:
         from sprinkler.auto.bandwidth.core.command_preview import urma_cmd_execute
         urma_cmd_execute(args)

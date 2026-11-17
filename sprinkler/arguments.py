@@ -321,6 +321,21 @@ class ArgumentGroups:
                            help='Batch control BMC power (on/off/status) for cpu-bmc, npu-bmc, and sfu-bmc targets')
 
     @staticmethod
+    def add_serdes(parser):
+        group = parser.add_argument_group(title='SerDes PN Check')
+        group.add_argument("-pn-check", "-pn_check", dest="pn_check", action="store_true",
+                           help="Query SerDes PN polarity on local NPUs and print the port/direction matrix")
+        group.add_argument("-udie", dest="udie", type=int, choices=[0, 1], default=0,
+                           help="NPU udie index (0/1); passed to serdestool as -i (default: 0)")
+        group.add_argument("-port-mode", "-port_mode", dest="port_mode",
+                           choices=["x2", "x4"], default="x2",
+                           help="Port width: x2 = 20 ports x 2 lanes, x4 = 10 ports x 4 lanes "
+                                "(default: x2)")
+        group.add_argument("-ports", dest="pn_ports", default="all",
+                           help="Ports to query for -pn-check, e.g. 0-3,5 or all "
+                                "(x2: 0-19, x4: 0-9; default: all)")
+
+    @staticmethod
     def add_path(parser):
         group = parser.add_argument_group(title='Path Check')
         group.add_argument('-query-path', '-query_path', action=QueryPathAction, metavar="PATH_ARGS",
@@ -611,6 +626,7 @@ def get_args_parser() -> ArgumentParser:
     ArgumentGroups.add_runtime(parser)
     ArgumentGroups.add_podm(parser)
     ArgumentGroups.add_bmc(parser)
+    ArgumentGroups.add_serdes(parser)
     ArgumentGroups.add_path(parser)
     ArgumentGroups.add_config(parser)
     ArgumentGroups.add_smn(parser)

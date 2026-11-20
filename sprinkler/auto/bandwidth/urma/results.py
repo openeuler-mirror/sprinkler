@@ -41,6 +41,17 @@ def bw_display_unit(opts_text=None):
         return f"[{unit}/s]"
     return BANDWIDTH_DISPLAY_UNIT
 
+
+def bw_opts_text(args):
+    """``-urma-opts`` / ``-uboe-opts`` 的原始文本，可能携带 ``--bw_unit``。"""
+    return " ".join(str(getattr(args, name, "") or "") for name in ("urma_opts", "uboe_opts"))
+
+
+def bw_display_unit_for_args(args):
+    """按本次参数解析显示单位；h2d/xd2d/ubg 各入口共用。"""
+    return bw_display_unit(bw_opts_text(args))
+
+
 DEFAULT_SAMPLE_TAIL = 10
 DEFAULT_START_STAGGER_SECONDS = 0.2
 DEFAULT_LISTENER_READY_SECONDS = 2.0

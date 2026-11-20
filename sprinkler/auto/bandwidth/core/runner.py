@@ -266,13 +266,8 @@ def pair_ping_passed(pair, passed_ranks, passed_targets):
     target = pair.get("target")
     return all(rank in passed_ranks for rank in ranks) if ranks else not target or target in passed_targets
 
-def _extract_bw_opts_text(args):
-    """Gather --bw_unit candidates from urma_opts / uboe_opts."""
-    return " ".join(str(getattr(args, name, "") or "") for name in ("urma_opts", "uboe_opts"))
-
-
 def urma_bandwidth_execute(args):
-    from sprinkler.auto.bandwidth.urma.results import bw_display_unit
+    from sprinkler.auto.bandwidth.urma.results import bw_display_unit_for_args
 
     run_log = RunLog(args, default_check_id=CHECK_ID)
     run_log.info(f"log_dir={run_log.path}")
@@ -281,6 +276,6 @@ def urma_bandwidth_execute(args):
     except Exception as exc:
         return run_log.fail_error(CHECK_ID, exc)
 
-    bw_unit = bw_display_unit(_extract_bw_opts_text(args))
+    bw_unit = bw_display_unit_for_args(args)
     return run_log.finish_results(CHECK_ID, results, UrmaBandwidthResultView(run_log.formatter, bw_unit=bw_unit),
                                   BandwidthReport(results, unit=bw_unit))

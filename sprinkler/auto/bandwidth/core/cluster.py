@@ -9,7 +9,7 @@ from sprinkler.auto.bandwidth.common import mode_list, xboard_link_mode, DEFAULT
 from sprinkler.auto.bandwidth.report import BandwidthReport
 from sprinkler.auto.bandwidth.planning.eid_pairs import plan_eid_pairs
 from sprinkler.auto.bandwidth.planning.ping_check import PingCheckRunner, PingPrecheck
-from sprinkler.auto.bandwidth.urma.results import UrmaBandwidthResultView
+from sprinkler.auto.bandwidth.urma.results import UrmaBandwidthResultView, bw_display_unit_for_args
 from sprinkler.auto.bandwidth.urma.planner import UrmaTrafficRunner
 from sprinkler.connect.targets import TargetContext
 
@@ -91,6 +91,7 @@ class ClusterBandwidthAction:
     def __init__(self, args, run_log):
         self.args = args
         self.run_log = run_log
+        self.bw_unit = bw_display_unit_for_args(args)
 
     def run(self):
         planner = ClusterBandwidthPlanner(self.args)
@@ -180,8 +181,9 @@ class ClusterBandwidthAction:
                 traffic = UrmaTrafficRunner(args=planner.args, run_log=self.run_log).run(traffic_pairs)
                 results += tag_results(traffic, execution_status="executed", real_traffic=True,
                                        bandwidth_phase=CHECK_ID, ping=True)
-        return self.run_log.finish_results(CHECK_ID, results, UrmaBandwidthResultView(self.run_log.formatter),
-                                           BandwidthReport(results))
+        return self.run_log.finish_results(CHECK_ID, results,
+                                           UrmaBandwidthResultView(self.run_log.formatter, bw_unit=self.bw_unit),
+                                           BandwidthReport(results, unit=self.bw_unit))
 
 def cluster_bw_execute(args):
     run_log = RunLog(args, default_check_id=CHECK_ID)

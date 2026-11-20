@@ -10,6 +10,9 @@ from sprinkler.auto.bandwidth.urma.show_resolver import UrmaShowResolver
 from sprinkler.auto.bandwidth.common import pair_target, compact_target_text, pair_side_text, grouped
 from sprinkler.utils.utils import positive_int_or_default
 
+#: 并发启动/停止 worker 上限；128 条流时避免一次拉起 128 个线程放大清理竞态。
+MAX_CONCURRENT_WORKERS = 32
+
 def log_traffic_plan(run_log, command_builder, link_mode, pairs):
     rows = plan_rows(command_builder, pairs)
     print_traffic_plan(run_log, rows, header="traffic_plan")
@@ -239,8 +242,16 @@ class UrmaTrafficRunner:
     def run_concurrent(self, items, action):
         if not items:
             return
-        with ThreadPoolExecutor(max_workers=len(items)) as pool:
-            list(pool.map(action, items))
+
+        def guarded(item):
+            try:
+                action(item)
+            except Exception as exc:  # 单条流启动/清理失败不应中止整轮
+                if self.run_log is not None:
+                    self.run_log.log("WARN", f"concurrent step failed: {exc}")
+
+        with ThreadPoolExecutor(max_workers=min(len(items), MAX_CONCURRENT_WORKERS)) as pool:
+            list(pool.map(guarded, items))
 
     def collect_session(self, session, results):
         try:

@@ -102,7 +102,8 @@ class UrmaLocalProcessHandle:
         if os.name == "nt":
             process.terminate()
             return
-        os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+        if not self.signal_group(signal.SIGTERM):
+            return
         time.sleep(1)
         if process.poll() is None:
             self.kill()
@@ -126,11 +127,37 @@ class UrmaLocalProcessHandle:
             return
         if os.name == "nt":
             process.kill()
-        else:
-            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            return
+        self.signal_group(signal.SIGKILL)
+
+    def signal_group(self, sig):
+        """向进程组发信号；进程已退出时静默返回 False。
+
+        ``poll()`` 判定存活后，进程可能在 ``getpgid`` 前退出并被 reader 线程回收，
+        此时 ``os.getpgid``/``os.killpg`` 会抛 ``ProcessLookupError`` (Errno 3)。
+        高并发 stop 时极易命中，不能让它冒泡中止整轮打流。
+        """
+        process = self.running_process()
+        if process is None:
+            return False
+        try:
+            os.killpg(os.getpgid(process.pid), sig)
+        except ProcessLookupError:
+            return False
+        return True
 
     def running_process(self):
         return self.process if self.process is not None and self.process.poll() is None else None
+
+    def close(self):
+        """回收 stdout 管道；高并发场景下避免管道句柄堆积。"""
+        stream = None if self.process is None else self.process.stdout
+        if stream is None or stream.closed:
+            return
+        try:
+            stream.close()
+        except (OSError, ValueError):
+            pass
 
     def return_code(self):
         return self.process.returncode if self.process is not None else None

@@ -49,7 +49,7 @@ class ConnectionRunner:
         self.connector = connector or SSHOSConnector(args=args, result_processor=ResultProcessor(), run_log=run_log)
         self._parallel = parallel
 
-    def run(self, targets, commands=None, on_result=None):
+    def run(self, targets, commands=None, on_result=None, deferred_provider=None):
         target_list = self._normalize_targets(targets)
         command_list = self._normalize_commands(commands)
         if not target_list:
@@ -59,11 +59,18 @@ class ConnectionRunner:
         if max_workers > 1:
             with ThreadPoolExecutor(max_workers=max_workers) as pool:
                 batches = list(pool.map(
-                    lambda t: self.connector.run_target(t, command_list, on_result=on_result),
+                    lambda t: self.connector.run_target(
+                        t, command_list, on_result=on_result, deferred_provider=deferred_provider
+                    ),
                     target_list,
                 ))
         else:
-            batches = [self.connector.run_target(t, command_list, on_result=on_result) for t in target_list]
+            batches = [
+                self.connector.run_target(
+                    t, command_list, on_result=on_result, deferred_provider=deferred_provider
+                )
+                for t in target_list
+            ]
 
         results = []
         for target, batch in zip(target_list, batches):

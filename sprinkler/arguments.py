@@ -290,8 +290,13 @@ class ArgumentGroups:
         group.add_argument('-sfu-check', dest='sfu_check', action='store_true', help='check sfu 1260.')
         group.add_argument('-npu-check', dest='npu_check', action='store_true', help='check npu 1213.')
         group.add_argument('-cpu-check', dest='cpu_check', action='store_true', help='check cpu 1213.')
+        group.add_argument('-L1-check', dest='L1_check', action='store_true',
+                           help='check L1 front switch (use with -ip)')
+        group.add_argument('-L2-check', dest='L2_check', action='store_true',
+                           help='check L2 front switch (use with -ip)')
         group.add_argument('-check-item', dest='check_item', type=str, default=None,
-                           help='Select the items to be checked, supported: credit/port/link/config/card/disk/all')
+                           help='Select the items to be checked, supported: credit/port/link/config/card/disk/all '
+                                '(L1/L2: port/credit/lane/all)')
         group.add_argument('-parallel', dest='parallel', type=int, default=8,
                            help='Parallel workers for runtime check')
 

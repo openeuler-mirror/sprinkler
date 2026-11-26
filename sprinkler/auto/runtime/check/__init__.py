@@ -3,7 +3,7 @@ from sprinkler.auto.runtime.check.check_env import (
     resolve_env, resolve_env_type, resolve_env_from_args, ENV_LABEL,
 )
 from sprinkler.auto.runtime.check.check_runner import (
-    CheckRunner, ALL_CHECK_ITEM_NAMES, parse_check_items,
+    CheckRunner, ALL_CHECK_ITEM_NAMES, all_check_item_names, parse_check_items,
 )
 from sprinkler.auto.runtime.check.check_builder import CheckBuilder
 from sprinkler.auto.runtime.check.items.check_item_base import CheckItemBase

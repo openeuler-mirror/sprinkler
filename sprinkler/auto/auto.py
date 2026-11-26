@@ -273,7 +273,8 @@ def auto_exec():
         update_code(args)
     if args.cluster_mpi:
         cluster_mpi(args)
-    if getattr(args, 'sfu_check', False) or getattr(args, 'npu_check', False) or getattr(args, 'cpu_check', False):
+    if (args.sfu_check or args.npu_check or args.cpu_check
+            or args.L1_check or args.L2_check):
         from sprinkler.auto.runtime.check.runtime_check import runtime_check
         runtime_check(args)
     if args.get_route:

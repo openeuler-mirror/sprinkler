@@ -19,7 +19,8 @@ from sprinkler.connect.targets import ConnectionTarget
 class SwitchSSHConnector(SSHConnector):
     """前台交换机（C平面）SSH 直连，通过 invoke_shell 交互式 shell 执行命令。"""
 
-    def _run_commands(self, target: ConnectionTarget, commands: list[str], on_result=None):
+    def _run_commands(self, target: ConnectionTarget, commands: list[str], on_result=None,
+                      deferred_provider=None):
         try:
             import paramiko  # noqa: F401
         except Exception as exc:
@@ -30,7 +31,7 @@ class SwitchSSHConnector(SSHConnector):
         client = self._establish_connection(target)
         label = self.target_label(target)
         try:
-            results = self._run_via_shell(client, target, commands, on_result)
+            results = self._run_via_shell(client, target, commands, on_result, deferred_provider)
             if results is not None:
                 return results
             return self.result_processor.failed_many(
@@ -39,7 +40,15 @@ class SwitchSSHConnector(SSHConnector):
         finally:
             client.close()
 
-    def _run_via_shell(self, client, target, commands, on_result) -> list | None:
+    def _run_commands_with_deferred(self, target: ConnectionTarget, commands: list[str],
+                                    on_result, deferred_provider):
+        """在同一个 invoke_shell 会话内执行追加命令，避免重复建连。"""
+        return self._run_commands(
+            target, commands, on_result=on_result, deferred_provider=deferred_provider
+        )
+
+    def _run_via_shell(self, client, target, commands, on_result,
+                       deferred_provider=None) -> list | None:
         """通过 ``invoke_shell`` 交互式 shell 逐条执行命令。"""
         import socket as _socket
 
@@ -63,23 +72,33 @@ class SwitchSSHConnector(SSHConnector):
 
         results = []
         try:
-            for cmd in commands:
-                channel.send(cmd + "\n")
-                output = self._read_shell_output(channel)
-                if output is None:
-                    results.append(self.result_processor.make(
-                        target, cmd, False, 255, "timeout", "", "shell: 读取超时",
-                        time.time() - start, self.backend_name()))
-                else:
-                    rc, stdout, stderr = self._parse_shell_output(cmd, output)
-                    results.append(self.result_processor.make(
-                        target, cmd, rc == 0, rc, "" if rc == 0 else "command",
-                        stdout, stderr, time.time() - start, self.backend_name()))
-                if on_result is not None:
-                    try:
-                        on_result(results[-1])
-                    except Exception as exc:
-                        self.log_warn(f'{label} on_result 回调失败: {exc}')
+            pending = list(commands)
+            while pending:
+                for cmd in pending:
+                    channel.send(cmd + "\n")
+                    output = self._read_shell_output(channel)
+                    if output is None:
+                        results.append(self.result_processor.make(
+                            target, cmd, False, 255, "timeout", "", "shell: 读取超时",
+                            time.time() - start, self.backend_name()))
+                    else:
+                        rc, stdout, stderr = self._parse_shell_output(cmd, output)
+                        results.append(self.result_processor.make(
+                            target, cmd, rc == 0, rc, "" if rc == 0 else "command",
+                            stdout, stderr, time.time() - start, self.backend_name()))
+                    if on_result is not None:
+                        try:
+                            on_result(results[-1])
+                        except Exception as exc:
+                            self.log_warn(f'{label} on_result 回调失败: {exc}')
+                if deferred_provider is None:
+                    break
+                provider, deferred_provider = deferred_provider, None
+                try:
+                    pending = list(provider(results) or [])
+                except Exception as exc:
+                    self.log_warn(f'{label} 追加命令生成失败: {exc}')
+                    break
         finally:
             try:
                 channel.close()

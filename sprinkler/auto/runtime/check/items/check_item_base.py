@@ -27,6 +27,11 @@ class CheckItemBase(ABC):
     def get_commands(chip_count: int = 0, slot_id: int = 0, **_kwargs) -> list[str]:
         """返回该检查项需要的命令列表。"""
 
+    @classmethod
+    def get_deferred_commands(cls, results: list[dict] | None = None, **_kwargs) -> list[str]:
+        """首轮命令执行后，基于执行结果追加的命令（默认无）。"""
+        return []
+
     @abstractmethod
     def analyze_log(self) -> bool:
         """解析日志，返回是否通过。异常写入 self.anomalies。"""

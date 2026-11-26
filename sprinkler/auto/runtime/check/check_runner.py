@@ -5,13 +5,15 @@ from sprinkler.base.log import RunLog
 from sprinkler.connect.connection_runner import ConnectionRunner, create_runner
 from sprinkler.connect.targets import TargetContext, ConnectionTarget
 from sprinkler.connect.base import BaseConnector
-from sprinkler.auto.runtime.check.check_env import CheckEnv
+from sprinkler.auto.runtime.check.check_env import CheckEnv, ENV_LABEL, resolve_env_from_args
 from sprinkler.auto.runtime.check.items.check_item_base import CheckItemBase
 from sprinkler.auto.runtime.check.items.check_card_register import CheckCardRegister
 from sprinkler.auto.runtime.check.items.check_config import CheckConfig
-from sprinkler.auto.runtime.check.items.check_port_status import CheckPortStatus
+from sprinkler.auto.runtime.check.items.check_port_status import (
+    CheckPortStatus, CheckPort5808, CheckLane5808,
+)
 from sprinkler.auto.runtime.check.items.check_link_status import CheckLinkStatus
-from sprinkler.auto.runtime.check.items.check_credit_status import CheckCreditStatus
+from sprinkler.auto.runtime.check.items.check_credit_status import CheckCreditStatus, CheckCredit5808
 from sprinkler.auto.runtime.check.items.check_disk import CheckDisk, CheckDisk1213, CheckDiskBMC, CheckDiskNPU1213, CheckDiskNPUBMC, CheckDiskSFUBMC, CheckDiskSFU1260
 from sprinkler.auto.runtime.check.items.check_ubm_conn import CheckUbmConn
 from sprinkler.utils.utils import positive_int_or_default
@@ -36,12 +38,30 @@ _DISK_ALIAS = ["disk_cpu_os", "disk_cpu_1213", "disk_cpu_bmc"]
 _NPU_DISK_ALIAS = ["disk_npu_1213", "disk_npu_bmc"]
 _SFU_DISK_ALIAS = ["disk_sfu_bmc", "disk_sfu_1260"]
 
+# 环境专属检查项覆盖（同名检查项在不同环境使用不同实现）。
+_CHECK_ITEM_MAP_BY_ENV: dict[str, dict[str, type[CheckItemBase]]] = {
+    "5808": {
+        "port": CheckPort5808,
+        "credit": CheckCredit5808,
+        "lane": CheckLane5808,
+    },
+}
+
 ALL_CHECK_ITEM_NAMES: list[str] = list(_CHECK_ITEM_MAP.keys())
 
 
+def _item_map_for_env(env_name: str = "") -> dict[str, type[CheckItemBase]]:
+    return _CHECK_ITEM_MAP_BY_ENV.get(env_name, _CHECK_ITEM_MAP)
+
+
+def all_check_item_names(env_name: str = "") -> list[str]:
+    return list(_item_map_for_env(env_name).keys())
+
+
 def parse_check_items(check_item_str: str | None, env_name: str = "") -> list[str]:
+    item_map = _item_map_for_env(env_name)
     if check_item_str is None or check_item_str.strip() == "all":
-        return ALL_CHECK_ITEM_NAMES
+        return list(item_map)
     items = [item.strip() for item in check_item_str.split(",") if item.strip()]
     expanded = []
     for item in items:
@@ -58,14 +78,15 @@ def parse_check_items(check_item_str: str | None, env_name: str = "") -> list[st
             expanded.extend(_SFU_DISK_ALIAS)
         else:
             expanded.append(item)
-    invalid = [item for item in expanded if item not in _CHECK_ITEM_MAP]
+    invalid = [item for item in expanded if item not in item_map]
     if invalid:
-        raise ValueError(f"不支持的检查项: {invalid}，可选: {ALL_CHECK_ITEM_NAMES}")
+        raise ValueError(f"不支持的检查项: {invalid}，可选: {list(item_map)}")
     return expanded
 
 
-def resolve_check_items(item_names: list[str]) -> list[type[CheckItemBase]]:
-    return [_CHECK_ITEM_MAP[name] for name in item_names if name in _CHECK_ITEM_MAP]
+def resolve_check_items(item_names: list[str], env_name: str = "") -> list[type[CheckItemBase]]:
+    item_map = _item_map_for_env(env_name)
+    return [item_map[name] for name in item_names if name in item_map]
 
 
 class CheckRunner:
@@ -76,10 +97,19 @@ class CheckRunner:
         self.env = env
         self.args = args
         self.run_log = run_log
-        self.check_items = check_items or ALL_CHECK_ITEM_NAMES
-        self._item_classes = resolve_check_items(self.check_items)
+        self.check_items = check_items or all_check_item_names(env.name)
+        self._item_classes = resolve_check_items(self.check_items, env_name=env.name)
         self._target_ctx: TargetContext | None = None
         self._runner: ConnectionRunner | None = None
+
+    def _item_check_name(self, item_cls: type[CheckItemBase]) -> str:
+        """解析检查项显示名；含 {label} 的模板按入口（L1/L2）填充。"""
+        check_name = getattr(item_cls, 'CHECK_NAME', item_cls.__name__)
+        if "{label}" not in check_name:
+            return check_name
+        env_type = resolve_env_from_args(self.args)
+        label = ENV_LABEL.get(env_type, "") if env_type else ""
+        return check_name.format(label=label or self.env.name)
 
     @property
     def target_ctx(self) -> TargetContext:
@@ -138,7 +168,7 @@ class CheckRunner:
             groups[(conn, tgt)].append(item_cls)
         return dict(groups)
 
-    def analyze_log(self, log_path: str | dict[str, str]) -> tuple[bool, dict[str, list[str]]]:
+    def analyze_log(self, log_path: str | dict[str, str]) -> tuple[bool, dict[str, list[str]], dict]:
         if isinstance(log_path, dict):
             item_log_map = log_path
         else:
@@ -148,9 +178,10 @@ class CheckRunner:
         item_status = {}
         for item_cls in self._item_classes:
             name = item_cls.__name__
-            check_name = getattr(item_cls, 'CHECK_NAME', name)
+            check_name = self._item_check_name(item_cls)
             item_log = item_log_map.get(name, log_path) if item_log_map else log_path
             item = item_cls(item_log, run_log=self.run_log)
+            item.CHECK_NAME = check_name
             if hasattr(item, 'ALLOWED_DOWN_PATTERN'):
                 item.ALLOWED_DOWN_PATTERN = self.env.allowed_down_pattern
             if hasattr(item, 'CHIP_COUNT'):
@@ -196,12 +227,34 @@ class CheckRunner:
                 commands.extend(item_cls.get_commands(
                     chip_count=self.env.chip_count, slot_id=slot_id, credit_after_lines=self.env.credit_after_lines
                 ))
-            results = runner.run([group_target], commands, on_result=self._handle_realtime_result)
+            # 部分检查项（如 5808 credit）需要先解析首轮结果，再生成后续命令。
+            def deferred_provider(results):
+                deferred_commands = []
+                for item_cls in item_classes:
+                    deferred_commands.extend(item_cls.get_deferred_commands(
+                        results=results,
+                        chip_count=self.env.chip_count,
+                        slot_id=slot_id,
+                        credit_after_lines=self.env.credit_after_lines,
+                    ))
+                return deferred_commands
+
+            results = runner.run(
+                [group_target], commands,
+                on_result=self._handle_realtime_result,
+                deferred_provider=deferred_provider,
+            )
             if not results:
                 return False, {"ExecuteFail": ["命令执行无结果"]}, {}
             failed_cmds = [r.get("cmd", "?") for r in results if isinstance(r, dict) and not r.get("ok") and not r.get("stdout")]
-            if failed_cmds:
-                return False, {"ExecuteFail": failed_cmds}, {}
+            # 默认保持原行为：任一命令失败即返回；5808 允许部分失败后继续分析。
+            if failed_cmds and not (
+                self.env.continue_on_partial_failure and len(failed_cmds) < len(results)
+            ):
+                detail = failed_cmds
+                if self.env.continue_on_partial_failure and len(failed_cmds) > 5:
+                    detail = failed_cmds[:5] + [f"... 共 {len(failed_cmds)} 条命令执行失败"]
+                return False, {"ExecuteFail": detail}, {}
 
         return self.analyze_log(item_log_map)
 

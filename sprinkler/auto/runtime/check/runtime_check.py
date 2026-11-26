@@ -1,4 +1,4 @@
-"""运行时检查入口：根据 -sfu-check/-npu-check/-cpu-check + -check-item 执行检查。"""
+"""运行时检查入口：根据 -sfu-check/-npu-check/-cpu-check/-L1-check/-L2-check + -check-item 执行检查。"""
 
 from sprinkler.base.log import RunLog
 from sprinkler.auto.runtime.check.check_env import (
@@ -18,11 +18,12 @@ def runtime_check(args):
     check_type = resolve_env_type(env_type)
     item_names = parse_check_items(check_item_str, env_name=check_type)
     label = ENV_LABEL.get(env_type, env_type.upper())
+    check_type_label = label if env_type in ("L1", "L2") else check_type
 
     run_log = RunLog(args, default_check_id=f"{env_type}_check")
     run_log.info(f"log_dir={run_log.path or 'disabled'}")
     run_log.info(f"{label} 运行时检查")
-    run_log.info(f"检查类型: {check_type}")
+    run_log.info(f"检查类型: {check_type_label}")
     run_log.info(f"检查项: {', '.join(item_names)}")
 
     env = resolve_env(check_type)

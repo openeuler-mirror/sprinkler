@@ -81,7 +81,8 @@ class BaseConnector(ABC):
         self.connect_timeout = self._positive_int_arg("connect_timeout", 4)
         self.command_timeout = self._positive_int_arg("timeout", 30)
 
-    def run_target(self, target: ConnectionTarget, commands: list[str], on_result=None):
+    def run_target(self, target: ConnectionTarget, commands: list[str], on_result=None,
+                   deferred_provider=None):
         target = ConnectionTarget.from_value(target)
         target_error = target.validate()
         if target_error:
@@ -89,9 +90,22 @@ class BaseConnector(ABC):
 
         start = time.time()
         try:
-            return self._run_commands(target, commands, on_result=on_result)
+            if deferred_provider is None:
+                return self._run_commands(target, commands, on_result=on_result)
+            return self._run_commands_with_deferred(
+                target, commands, on_result=on_result, deferred_provider=deferred_provider
+            )
         except Exception as exc:
             return self.result_processor.failed_many(target, commands, self._classify_error(exc), str(exc), time.time() - start, self.backend_name())
+
+    def _run_commands_with_deferred(self, target: ConnectionTarget, commands: list[str],
+                                    on_result, deferred_provider):
+        """默认实现：首批执行完后按需重连执行追加命令；连接器可覆盖为同会话执行。"""
+        results = list(self._run_commands(target, commands, on_result=on_result) or [])
+        extra_commands = deferred_provider(results) or []
+        if extra_commands:
+            results.extend(self._run_commands(target, extra_commands, on_result=on_result) or [])
+        return results
 
     def run_command(self, client, target: ConnectionTarget, command: str):
         results = self.run_target(target, [command])

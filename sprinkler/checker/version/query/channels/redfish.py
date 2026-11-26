@@ -90,6 +90,11 @@ class RedfishReader:
         # BMC 类型时回显实际型号，区分"新型号未登记"与"数据缺失"
         self.last_product_name = ""
 
+    @property
+    def base_url(self) -> str:
+        """API 根地址（形如 ``https://<ip>[:port]``，不含路径）。"""
+        return self._base_url
+
     def close(self):
         """关闭底层会话，释放连接资源。"""
         self._session.close()

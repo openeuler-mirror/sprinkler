@@ -159,7 +159,8 @@ class TargetContext:
                 ConnectionTarget(name=entry.host, host=entry.host,
                     port=entry.port or default_port,
                     user=entry.user, password=entry.password,
-                    meta={"kind": target_type, "node": idx, "source": "cli_node_ip"})
+                    meta={"kind": target_type, "node": idx, "source": "cli_node_ip",
+                          "port_explicit": entry.port is not None})
                 for idx, entry in enumerate(self.node_ip_values)]
         return list(self._targets_cache[cache_key])
 
@@ -170,7 +171,8 @@ class TargetContext:
             self._targets_cache[cache_key] = [ConnectionTarget(name=item["endpoint"], host=item["host"],
                 port=item["port"] or default_port,
                 user=item["user"], password=item["password"],
-                meta={"kind": target_type, "node": index, "source": "cli_ip"})
+                meta={"kind": target_type, "node": index, "source": "cli_ip",
+                      "port_explicit": item["port"] is not None})
                 for index, item in enumerate(self.direct_values)]
         return list(self._targets_cache[cache_key])
 

@@ -1,0 +1,353 @@
+{
+  "description": "BIOS 高性能巡检白名单：只维护本文件即可调整巡检字段、分类和中文解释。分类按 BIOS 菜单划分（性能与功耗 / Socket 配置 / 内存配置 / 外设与杂项）。每个条目用 enabled 控制默认是否巡检（缺省为 true，当前仅启用 PowerPolicy）；也可用 -bios-whitelist PowerPolicy|ConfigTDP 按关键字临时指定条目。name 为逻辑名，zh_name 为输出表格中展示的中文名，aliases 为不同机型/固件上可能出现的真实 AttributeName（大小写不敏感，命中任意一个即视为匹配）。本工具只展示当前值与 BMC 菜单路径，不做期望值比对，也不会修改 BIOS。",
+  "categories": [
+    {
+      "name": "性能与功耗",
+      "description": "对应 Advanced->Performance Config 与 Advanced->Power And Performance Configuration，包含电源/性能策略、SMT、Uncore、预取、厂商加速特性及低功耗开关。",
+      "attributes": [
+        {
+          "name": "PowerPolicy",
+          "zh_name": "电源性能策略",
+          "enabled": true,
+          "aliases": ["PowerPolicy", "CustomPowerPolicy"],
+          "menu_path": "Advanced->Performance Config",
+          "description": "整体电源/性能策略。高性能场景通常设为 Performance；取值常见 Efficiency、Performance、Custom、LoadBalance。",
+          "reference": "x86 Purley: ./Advanced/Socket Configuration/Advanced Power Mgmt. Configuration / CustomPowerPolicy；ARM 鲲鹏: Advanced->Performance Config->Power Policy"
+        },
+        {
+          "name": "ConfigTDP",
+          "zh_name": "TDP 配置档",
+          "enabled": false,
+          "aliases": ["ConfigTDP", "ConfigTdp"],
+          "menu_path": "Advanced->Power And Performance Configuration",
+          "description": "CPU TDP 配置档位，影响功耗/热设计功耗上限；实际频率仍受负载、散热与功耗墙影响。",
+          "reference": "厂商 BIOS 注册表；不同机型属性名可能不同"
+        },
+        {
+          "name": "SMT2En",
+          "zh_name": "SMT2 超线程",
+          "enabled": false,
+          "aliases": ["SMT2En", "SMT2", "SMT"],
+          "menu_path": "Advanced->Power And Performance Configuration->CPU PM Control",
+          "description": "SMT 双线程开关。启用后一个物理核向 OS 呈现两个逻辑核，可提升多线程吞吐；部分 HPC 档会自动关闭 SMT。",
+          "reference": "鲲鹏 BIOS 调优文档：Advanced->Power And Performance Configuration->CPU PM Control->SMT2"
+        },
+        {
+          "name": "TurboMode",
+          "zh_name": "Turbo 加速",
+          "enabled": false,
+          "aliases": ["TurboMode", "TurboBoost", "CorePerformanceBoost"],
+          "menu_path": "Advanced->Power And Performance Configuration",
+          "description": "CPU Turbo（睿频/加速）开关。与 StaticTurbo 的定频策略不同，此项控制是否允许频率超过基准频率；关闭会限制单核与轻载性能。",
+          "reference": "厂商 BIOS 注册表；x86 常见 Turbo Mode / Turbo Boost，ARM 常见 Core Performance Boost"
+        },
+        {
+          "name": "CStateEn",
+          "zh_name": "C-State 节能",
+          "enabled": false,
+          "aliases": ["CStateEn", "CStates", "GlobalCStateControl"],
+          "menu_path": "Advanced->Power And Performance Configuration",
+          "description": "CPU C-State（空闲低功耗状态）开关。开启后空闲核进入更深睡眠，唤醒时延增加、频率爬升变慢；时延敏感或性能波动场景常关注其设置。",
+          "reference": "厂商 BIOS 注册表；x86 常见 C-States / Global C-State Control，ARM 常见 C-State 控制"
+        },
+        {
+          "name": "UncoreBoostEn",
+          "zh_name": "Uncore 提频",
+          "enabled": false,
+          "aliases": ["UncoreBoostEn", "UncoreBoost", "UncoreFreq"],
+          "menu_path": "Advanced->Power And Performance Configuration",
+          "description": "Uncore（核外共享缓存/互连/内存控制器）加速开关或频率项；具体语义以机型 HelpText 为准。",
+          "reference": "openUBMC IPMI OEM 命令含 Get CPU Uncore Freq；BIOS 属性名需以注册表为准"
+        },
+        {
+          "name": "CPUPrefetchConfig",
+          "zh_name": "CPU 预取配置",
+          "enabled": false,
+          "aliases": ["CPUPrefetchConfig", "CPUPrefetch"],
+          "menu_path": "Advanced->Power And Performance Configuration",
+          "description": "CPU 预取功能配置。预取可提前加载可能访问的数据，收益取决于工作负载与访存模式。",
+          "reference": "厂商 BIOS 注册表"
+        },
+        {
+          "name": "AdaptivePrefetch",
+          "zh_name": "自适应预取",
+          "enabled": false,
+          "aliases": ["AdaptivePrefetch"],
+          "menu_path": "Advanced->Power And Performance Configuration",
+          "description": "自适应预取开关，由处理器根据访问行为动态调整预取策略。",
+          "reference": "厂商 BIOS 注册表"
+        },
+        {
+          "name": "HiBoostEn",
+          "zh_name": "HiBoost 加速",
+          "enabled": false,
+          "aliases": ["HiBoostEn"],
+          "menu_path": "Advanced->Power And Performance Configuration",
+          "description": "HiBoost 功能开关；是否提升性能及适用条件以厂商说明为准。",
+          "reference": "厂商 BIOS 注册表"
+        },
+        {
+          "name": "HiBoostProfile",
+          "zh_name": "HiBoost 档位",
+          "enabled": false,
+          "aliases": ["HiBoostProfile"],
+          "menu_path": "Advanced->Power And Performance Configuration",
+          "description": "HiBoost 配置档位；档位行为以 BIOS 注册表 HelpText 为准。",
+          "reference": "厂商 BIOS 注册表"
+        },
+        {
+          "name": "HiBoostFreqSelect",
+          "zh_name": "HiBoost 频率",
+          "enabled": false,
+          "aliases": ["HiBoostFreqSelect"],
+          "menu_path": "Advanced->Power And Performance Configuration",
+          "description": "HiBoost 频率选择参数；数值单位与映射关系需以厂商定义为准。",
+          "reference": "厂商 BIOS 注册表"
+        },
+        {
+          "name": "DemtMode",
+          "zh_name": "DEMT 模式",
+          "enabled": false,
+          "aliases": ["DemtMode"],
+          "menu_path": "Advanced->Power And Performance Configuration",
+          "description": "DEMT 功能开关；具体定义及性能影响以该机型 BIOS HelpText 为准。",
+          "reference": "厂商 BIOS 注册表"
+        },
+        {
+          "name": "DemtProfile",
+          "zh_name": "DEMT 档位",
+          "enabled": false,
+          "aliases": ["DemtProfile"],
+          "menu_path": "Advanced->Power And Performance Configuration",
+          "description": "DEMT 性能配置档位，属于 DEMT 子功能，不等同于整体 PowerPolicy。",
+          "reference": "厂商 BIOS 注册表"
+        },
+        {
+          "name": "LPIEn",
+          "zh_name": "低功耗空闲",
+          "enabled": false,
+          "aliases": ["LPIEn"],
+          "menu_path": "Advanced->Power And Performance Configuration",
+          "description": "低功耗空闲（Low Power Idle）相关开关；开启可能降低空闲功耗，但可能影响时延敏感业务。",
+          "reference": "厂商 BIOS 注册表"
+        },
+        {
+          "name": "IoBypassLlcEn",
+          "zh_name": "IO 旁路 LLC",
+          "enabled": false,
+          "aliases": ["IoBypassLlcEn"],
+          "menu_path": "Advanced->Power And Performance Configuration",
+          "description": "I/O 绕过 LLC（末级缓存）开关；是否绕过及对带宽/时延的影响取决于平台实现与业务访存模式。",
+          "reference": "厂商 BIOS 注册表"
+        },
+        {
+          "name": "UFSEn",
+          "zh_name": "UFS 开关",
+          "enabled": false,
+          "aliases": ["UFSEn"],
+          "menu_path": "Advanced->Power And Performance Configuration",
+          "description": "厂商定义的 UFS 功能开关；缩写及作用需结合本机 HelpText/硬件手册确认。",
+          "reference": "厂商 BIOS 注册表"
+        }
+      ]
+    },
+    {
+      "name": "Socket 配置",
+      "description": "对应 Advanced->Socket Configuration（Advanced Power Mgmt. Configuration 与 IIO Configuration），包含 x86 性能档位与 VT-d/PCIe 地址翻译相关配置。",
+      "attributes": [
+        {
+          "name": "BenchMarkSelection",
+          "zh_name": "性能档位",
+          "enabled": false,
+          "aliases": ["BenchMarkSelection", "PerformanceProfile"],
+          "menu_path": "Advanced->Socket Configuration->Advanced Power Mgmt. Configuration",
+          "description": "性能配置档（Performance Profile）。常见取值 HPC、MemoryThroughput、IOThroughput、LowLatency、GeneralComputingInt/Float、PowerEfficiency 等；HPC 档在部分鲲鹏机型上会自动关闭 SMT。",
+          "reference": "Huawei Purley Redfish BIOS 配置表：Performance Profile / BenchMarkSelection"
+        },
+        {
+          "name": "StaticTurbo",
+          "zh_name": "定频 Turbo",
+          "enabled": false,
+          "aliases": ["StaticTurbo"],
+          "menu_path": "Advanced->Socket Configuration->Advanced Power Mgmt. Configuration",
+          "description": "静态 Turbo/定频策略。取值 Auto、Manual、Disable；高性能场景常关注是否启用。",
+          "reference": "Huawei Purley Redfish BIOS 配置表：Static Turbo / StaticTurbo（BIOS V6XX+）"
+        },
+        {
+          "name": "FreqSelect",
+          "zh_name": "定频频率",
+          "enabled": false,
+          "aliases": ["FreqSelect", "CPUFreqSelect"],
+          "menu_path": "Advanced->Socket Configuration->Advanced Power Mgmt. Configuration",
+          "description": "CPU 频率选择（数值型）。与 StaticTurbo 配合用于固定频率，具体单位与可选范围以机型注册表为准。",
+          "reference": "Huawei Purley Redfish BIOS 配置表：CPU Frequency Select / FreqSelect（BIOS V6XX+）"
+        },
+        {
+          "name": "VTdSupport",
+          "zh_name": "VT-d 虚拟化",
+          "enabled": false,
+          "aliases": ["VTdSupport", "VTd"],
+          "menu_path": "Advanced->Socket Configuration->IIO Configuration->Intel(R) VT for Directed I/O(VT-d)",
+          "description": "VT-d/IOMMU 开关。影响设备直通与 DMA 重映射；关闭可减少翻译开销但降低隔离性。",
+          "reference": "Huawei Purley Redfish BIOS 配置表：VT-d / VTdSupport"
+        },
+        {
+          "name": "ATS",
+          "zh_name": "ATS 地址转换",
+          "enabled": false,
+          "aliases": ["ATS", "AtsSupport"],
+          "menu_path": "Advanced->Socket Configuration->IIO Configuration->Intel(R) VT for Directed I/O(VT-d)",
+          "description": "Address Translation Services 开关；影响设备侧地址翻译与 I/O 性能。",
+          "reference": "Huawei Purley Redfish BIOS 配置表：ATS"
+        },
+        {
+          "name": "AcsEnable",
+          "zh_name": "ACS 访问控制",
+          "enabled": false,
+          "aliases": ["AcsEnable", "ACS"],
+          "menu_path": "Advanced->Socket Configuration->IIO Configuration->Intel(R) VT for Directed I/O(VT-d)",
+          "description": "Access Control Services 开关；影响 PCIe 设备间的直接 P2P 访问与隔离策略。",
+          "reference": "Huawei Purley Redfish BIOS 配置表：Access Control Services / AcsEnable（BIOS V6XX+）"
+        },
+        {
+          "name": "InterruptRemap",
+          "zh_name": "中断重映射",
+          "enabled": false,
+          "aliases": ["InterruptRemap"],
+          "menu_path": "Advanced->Socket Configuration->IIO Configuration->Intel(R) VT for Directed I/O(VT-d)",
+          "description": "中断重映射开关；虚拟化与设备直通场景通常需要开启。",
+          "reference": "Huawei Purley Redfish BIOS 配置表：Interrupt Remapping / InterruptRemap"
+        },
+        {
+          "name": "PassThroughDMA",
+          "zh_name": "直通 DMA",
+          "enabled": false,
+          "aliases": ["PassThroughDMA"],
+          "menu_path": "Advanced->Socket Configuration->IIO Configuration->Intel(R) VT for Directed I/O(VT-d)",
+          "description": "直通 DMA 开关；影响设备 DMA 路径的翻译行为与性能。",
+          "reference": "Huawei Purley Redfish BIOS 配置表：DMA / PassThroughDMA"
+        }
+      ]
+    },
+    {
+      "name": "内存配置",
+      "description": "对应 Advanced->Memory Configuration，包含 DDR 频率/刷新、NUMA、内存初始化与可靠性配置。",
+      "attributes": [
+        {
+          "name": "DDRFreqLimit",
+          "zh_name": "DDR 频率上限",
+          "enabled": false,
+          "aliases": ["DDRFreqLimit", "DdrFreqLimit"],
+          "menu_path": "Advanced->Memory Configuration",
+          "description": "DDR 内存频率限制策略；Auto 表示由 BIOS 按内存配置与兼容性规则决定。带宽场景通常关注是否被限频。",
+          "reference": "厂商 BIOS 注册表"
+        },
+        {
+          "name": "MemoryFrequency",
+          "zh_name": "内存频率",
+          "enabled": false,
+          "aliases": ["MemoryFrequency", "DDRFrequency", "MemorySpeed"],
+          "menu_path": "Advanced->Memory Configuration",
+          "description": "内存实际运行频率。若低于内存标称或平台支持值，会直接限制内存带宽；排查带宽不达标时优先确认此项。",
+          "reference": "厂商 BIOS 注册表；实际属性名与取值单位以注册表为准"
+        },
+        {
+          "name": "MemoryInterleave",
+          "zh_name": "内存通道交错",
+          "enabled": false,
+          "aliases": ["MemoryInterleave", "ChannelInterleave", "MemoryInterleaving"],
+          "menu_path": "Advanced->Memory Configuration",
+          "description": "内存通道/交织方式。开启交织可让连续地址分散到多个通道，提升有效带宽；关闭或仅单通道会明显降低带宽。",
+          "reference": "厂商 BIOS 注册表"
+        },
+        {
+          "name": "DdrRefreshRate",
+          "zh_name": "DDR 刷新率",
+          "enabled": false,
+          "aliases": ["DdrRefreshRate"],
+          "menu_path": "Advanced->Memory Configuration",
+          "description": "DDR 刷新频率策略；刷新用于维持 DRAM 数据，策略会影响可靠性、功耗与性能。",
+          "reference": "厂商 BIOS 注册表"
+        },
+        {
+          "name": "DdrRefreshSupport",
+          "zh_name": "DDR 刷新支持",
+          "enabled": false,
+          "aliases": ["DdrRefreshSupport"],
+          "menu_path": "Advanced->Memory Configuration",
+          "description": "DDR 刷新相关支持功能开关；具体控制范围以平台定义为准。",
+          "reference": "厂商 BIOS 注册表"
+        },
+        {
+          "name": "PatrolScrub",
+          "zh_name": "内存巡检擦洗",
+          "enabled": false,
+          "aliases": ["PatrolScrub", "PatrolScrubEn"],
+          "menu_path": "Advanced->Memory Configuration",
+          "description": "内存巡检（Patrol Scrub）开关。后台周期性巡检会占用内存带宽，可能表现为周期性时延抖动；排查性能抖动时关注。",
+          "reference": "厂商 BIOS 注册表"
+        },
+        {
+          "name": "NumaNodePerSocket",
+          "zh_name": "每插槽 NUMA",
+          "enabled": false,
+          "aliases": ["NumaNodePerSocket", "NUMANodePerSocket"],
+          "menu_path": "Advanced->Memory Configuration",
+          "description": "每个 Socket 划分的 NUMA 节点数；影响 OS 内存亲和性、进程绑核/绑内存策略与跨节点带宽。",
+          "reference": "厂商 BIOS 注册表"
+        },
+        {
+          "name": "MemoryInitType",
+          "zh_name": "内存初始化",
+          "enabled": false,
+          "aliases": ["MemoryInitType"],
+          "menu_path": "Advanced->Memory Configuration",
+          "description": "内存初始化方式；Parallel 表示并行初始化路径，主要影响启动阶段耗时。",
+          "reference": "厂商 BIOS 注册表"
+        }
+      ]
+    },
+    {
+      "name": "外设与杂项",
+      "description": "对应 Advanced->Peripheral Configuration 与 Advanced->MISC Config，包含 SMMU、PCIe 虚拟化特性与链路电源管理。",
+      "attributes": [
+        {
+          "name": "SupportSmmu",
+          "zh_name": "SMMU 支持",
+          "enabled": false,
+          "aliases": ["SupportSmmu", "SupportSMMU", "SMMUSupport"],
+          "menu_path": "Advanced->MISC Config",
+          "description": "SMMU 开关。SMMU 会引入地址翻译开销，对 h2d 等 I/O 带宽有影响；带宽排查场景常要求 Disable，但需结合业务隔离需求评估。",
+          "reference": "昇腾带宽排查 Checklist：Advanced->MISC Config->Support Smmu"
+        },
+        {
+          "name": "PCIeSRIOVSupport",
+          "zh_name": "SR-IOV 支持",
+          "enabled": false,
+          "aliases": ["PCIeSRIOVSupport"],
+          "menu_path": "Advanced->Peripheral Configuration",
+          "description": "PCIe SR-IOV 支持。影响虚拟化场景下的 I/O 直通与带宽分配，非虚拟化高性能场景按需开启。",
+          "reference": "Huawei Purley Redfish BIOS 配置表：PCIe SR-IOV / PCIeSRIOVSupport"
+        },
+        {
+          "name": "PCIeARISupport",
+          "zh_name": "PCIe ARI 支持",
+          "enabled": false,
+          "aliases": ["PCIeARISupport"],
+          "menu_path": "Advanced->Peripheral Configuration",
+          "description": "PCIe ARI（Alternative Routing-ID Interpretation）支持，影响多功能设备的 Routing ID 解析。",
+          "reference": "Huawei Purley Redfish BIOS 配置表：PCIe ARI / PCIeARISupport"
+        },
+        {
+          "name": "PCIeASPM",
+          "zh_name": "PCIe ASPM 省电",
+          "enabled": false,
+          "aliases": ["PCIeASPM", "ASPM", "PCIeASPMControl"],
+          "menu_path": "Advanced->Peripheral Configuration",
+          "description": "PCIe 链路电源管理（ASPM）。开启 L1/L0s 等低功耗状态可在空闲时省电，但可能增加链路唤醒时延、影响带宽；性能排查常确认其设置。",
+          "reference": "厂商 BIOS 注册表"
+        }
+      ]
+    }
+  ]
+}

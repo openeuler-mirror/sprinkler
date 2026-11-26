@@ -336,6 +336,34 @@ class ArgumentGroups:
                                 "(x2: 0-19, x4: 0-9; default: all)")
 
     @staticmethod
+    def add_bios(parser):
+        group = parser.add_argument_group(title='BIOS Inspection')
+        group.add_argument("-bios-inspect", "-bios_inspect", dest="bios_inspect", action="store_true",
+                           help="Read-only BIOS high-performance inspection on CPU BMC via Redfish "
+                                "(whitelist categories follow BIOS menus: "
+                                "performance/power, socket, memory, peripheral, boot). "
+                                "Target modes: "
+                                "(1) -ip 10.0.0.1[,10.0.0.2] -user Administrator -pwd xxx "
+                                "(single/multi, shared or per-IP creds); "
+                                "(2) -node \"10.0.0.1:8443,10.0.0.2;Administrator;pwd\" "
+                                "(per-node creds, IP:port supported); "
+                                "(3) -sp 0 -ca 0 -node 1-8 (creds from xlsx, do not pass -user/-pwd). "
+                                "BMC Redfish port defaults to 443; use IP:port for custom ports. "
+                                "Examples: "
+                                "sprinkler -bios-inspect -ip 10.0.0.1 -user Administrator -pwd xxx | "
+                                "sprinkler -bios-inspect -node \"10.0.0.1,10.0.0.2;Administrator;pwd\" | "
+                                "sprinkler -bios-inspect -sp 0 -ca 0 -node 1-8.")
+        group.add_argument("-bios-whitelist", "-bios_whitelist", dest="bios_whitelist", default=None,
+                           metavar="KEYS",
+                           help="按关键字筛选巡检项，多个用 | 分隔（如 PowerPolicy|ConfigTDP）；"
+                                "不指定时使用白名单中 enabled 的条目")
+        group.add_argument("-bios-system-id", "-bios_system_id", dest="bios_system_id", default="1",
+                           help="Redfish System ID (default: 1)")
+        group.add_argument("-bios-timeout", "-bios_timeout", dest="bios_timeout",
+                           type=argparse_positive_int, default=20,
+                           help="Single Redfish request timeout in seconds (default: 20)")
+
+    @staticmethod
     def add_path(parser):
         group = parser.add_argument_group(title='Path Check')
         group.add_argument('-query-path', '-query_path', action=QueryPathAction, metavar="PATH_ARGS",
@@ -627,6 +655,7 @@ def get_args_parser() -> ArgumentParser:
     ArgumentGroups.add_podm(parser)
     ArgumentGroups.add_bmc(parser)
     ArgumentGroups.add_serdes(parser)
+    ArgumentGroups.add_bios(parser)
     ArgumentGroups.add_path(parser)
     ArgumentGroups.add_config(parser)
     ArgumentGroups.add_smn(parser)

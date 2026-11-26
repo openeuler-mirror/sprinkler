@@ -295,6 +295,9 @@ def auto_exec():
     if getattr(args, "pn_check", False):
         from sprinkler.checker.serdes import pn_check_execute
         pn_check_execute(args)
+    if getattr(args, "bios_inspect", False):
+        from sprinkler.checker.bios import bios_inspect_execute
+        rc = bios_inspect_execute(args) or rc
     if args.urma_cmd:
         from sprinkler.auto.bandwidth.core.command_preview import urma_cmd_execute
         urma_cmd_execute(args)

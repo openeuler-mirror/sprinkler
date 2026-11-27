@@ -50,6 +50,11 @@ def _run_mode(args, mode):
 def connect_exec():
     args = get_args()
 
+    # PRBS 用 -ip 指定 5808 对端（-5808-front 为可选的通用连接开关）；
+    # 带 -5808-front 时不能再进入 connect 模式，否则会因缺少 -cmd/-file 报错。
+    if getattr(args, "prbs", False):
+        return
+
     for mode in CONNECTION_MODES:
         if getattr(args, mode, False):
             return _run_mode(args, mode)

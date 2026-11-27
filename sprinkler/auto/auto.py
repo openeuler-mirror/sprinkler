@@ -285,6 +285,9 @@ def auto_exec():
     if args.no_pass:
         from sprinkler.auto.base.no_pass import no_pass_check
         no_pass_check(args)
+    if getattr(args, "prbs", False):
+        from sprinkler.auto.prbs import prbs_exec
+        rc = prbs_exec(args) or rc
     if args.cluster_nopass:
         from sprinkler.auto.base.cluster_nopass import cluster_nopass
         cluster_nopass(args)

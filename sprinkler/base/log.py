@@ -30,6 +30,10 @@ class RunLog:
     def fail(self, message: str):
         self.log("FAIL", message)
 
+    def detail(self, message: str):
+        """Persist to run.log without printing to the console."""
+        self._write("INFO", message)
+
     def fail_error(self, label: str, exc: Exception):
         self.fail(f"error: {exc}")
         self.write_results([])

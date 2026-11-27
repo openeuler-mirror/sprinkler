@@ -403,6 +403,30 @@ class ArgumentGroups:
                            help="Cabinet name to list blades, e.g. C02-A06 (needs -sp)")
 
     @staticmethod
+    def add_prbs(parser):
+        group = parser.add_argument_group(title='PRBS Link Test')
+        group.add_argument("-prbs", dest="prbs", action="store_true",
+                           help="PRBS full link test: npu serdes prbs31 + 5808 front port prbs "
+                                "(use -rank to select NPUs; -ip <ip>[,<ip>...] specifies the "
+                                "5808 front(s) and is required because BER needs the 5808 side "
+                                "to send PRBS)")
+        group.add_argument("-macros", dest="macros", type=str, default="0-7",
+                           help="NPU serdes macros to drive, e.g. 0-7 or 0,2,4 "
+                                "(default: 0-7, valid: 0-16)")
+        group.add_argument("-target", dest="target", type=float, default=1e-9,
+                           help="BER target, e.g. 5E-7 or 1e-6; lanes whose max BER "
+                                "exceeds it are marked FAIL (default: 1e-9)")
+        group.add_argument("-rounds", dest="rounds", type=int, default=5,
+                           help="retained sampling rounds per port; one extra warm-up round "
+                                "is acquired and discarded (default: 5)")
+        group.add_argument("-interval", dest="interval", type=int, default=10,
+                           help="seconds between sampling rounds (default: 10)")
+        group.add_argument("-slot", dest="slot", type=str, default="1",
+                           help="5808 slot used by port mapping and prbs commands; "
+                                "one unique slot per -ip target, comma-separated in "
+                                "-ip order, e.g. -ip A,B -slot 1,2 (default: 1)")
+
+    @staticmethod
     def add_connect(parser):
         group = parser.add_argument_group(title='SSH Connection')
         group.add_argument('-xlsx', type=str, default=None,
@@ -647,6 +671,7 @@ def get_args_parser() -> ArgumentParser:
     ArgumentGroups.add_config(parser)
     ArgumentGroups.add_smn(parser)
     ArgumentGroups.add_db(parser)
+    ArgumentGroups.add_prbs(parser)
     ArgumentGroups.add_connect(parser)
     ArgumentGroups.add_svm(parser)
     ArgumentGroups.add_version_query(parser)

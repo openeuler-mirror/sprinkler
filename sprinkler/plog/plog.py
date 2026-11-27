@@ -105,28 +105,6 @@ def check_log_config():
         print(line, end='')
     process.wait()
 
-def log_save_qemu():
-    command = ['bash', str(package_path() / "plog" / "qemu_gather_logs.sh")]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
-def log_clean_qemu():
-    command = ['bash', str(package_path() / "plog" / "qemu_clean_logs.sh")]
-    process = subprocess.Popen(command,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1)
-    for line in process.stdout:
-        print(line, end='')
-    process.wait()
-
 def reinsert_ipourma_ko():
     command = ['bash', str(package_path() / "plog" / "reinsert_ipourma_ko.sh")]
     process = subprocess.Popen(command,
@@ -210,10 +188,6 @@ def plog_exec():
         log_clean_local()
     if args.check_log:
         check_log_config()
-    if args.log_qemu_save:
-        log_save_qemu()
-    if args.log_qemu_clean:
-        log_clean_qemu()
     if args.reinsert_ipourma_ko:
         reinsert_ipourma_ko()
     if args.check_chip_delay:

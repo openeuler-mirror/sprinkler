@@ -96,8 +96,6 @@ class ArgumentGroups:
         group.add_argument("-PA", "--plog_error-analysis", action='store_true', help="Analysis ERROR In Plog")
         group.add_argument("-log_save", "-log-save", action='store_true', help="Save logs")
         group.add_argument("-log_clean", "-log-clean", action='store_true', help="Clean pod logs")
-        group.add_argument("-log-qemu-save", action='store_true', help="Save qemu logs")
-        group.add_argument("-log-qemu-clean", action='store_true', help="Clean qemu logs")
         group.add_argument("-plevel", "--plog_level", type=int, choices=[1, 2, 3], default=1,
                            help="plog search level: 1-plog, 2-debug, 3-log (default: 1)")
         group.add_argument("-n", "--number", type=int, default=15, help="ERROR numbers (default: 15)")
@@ -133,8 +131,6 @@ class ArgumentGroups:
     @staticmethod
     def add_env_check(parser):
         group = parser.add_argument_group(title='Environment Check')
-        group.add_argument("-auto", "--auto", nargs='?', const="L2", choices=["L1", "L2"], metavar="LEVEL",
-                           help="Open Automatic Environmental Health Check Func")
         group.add_argument("-enable-env", "-enable_env", action='store_true', help="enable env config is ok")
         group.add_argument("-env-check", "-env_check", action='store_true', help="Check env")
         group.add_argument("-cpu-hugepage", "-cpu_hugepage", action='store_true', help="Configure CPU hugepages memory")
@@ -147,8 +143,6 @@ class ArgumentGroups:
     def add_device_ops(parser):
         group = parser.add_argument_group(title='Device Operations')
         group.add_argument("-npu-smi", "-npu_smi", action='store_true', help="quick npu smi memory watch")
-        group.add_argument("-reg-rw", "-reg_rw", action='store_true', help="Register read/write")
-        group.add_argument("-reg-ids", "-reg_ids", type=str, default="0,1,2,3,4,5,6,7", help="Register IDs")
         group.add_argument("-check-eth", "-check_eth", action='store_true', help="Check ethernet")
         group.add_argument("-cluster-eth", "-cluster-eth", action='store_true', help="Cluster ethernet check")
         group.add_argument("-check-cpu-mem", "-check_cpu_mem", action='store_true', help="Check CPU memory")
@@ -168,8 +162,6 @@ class ArgumentGroups:
     def add_urma(parser):
         group = parser.add_argument_group(title='URMA Operations')
         group.add_argument("-urma-show", "-urma_show", action='store_true', help="urma-admin-show and check eid")
-        group.add_argument("-urma-perftest", "-urma_perftest", nargs=2, metavar=("CLIENT_RANGE", "SERVER_RANGE"),
-                           help="Generate uram-perftest commands for CLIENT_RANGE -> SERVER_RANGE")
         group.add_argument("-urma-fix", "-urma_fix", action='store_true', help="Generate register devmem write command")
         group.add_argument("-stop-urma", "-stop_urma", action='store_true', help="Stop NPU urma process")
         group.add_argument("-urma-bandwidth", dest="urma_bandwidth", nargs="*", default=None,
@@ -185,8 +177,6 @@ class ArgumentGroups:
                            help="bandwidth plan mode")
         group.add_argument("-d2d-main", type=int, default=None, help="main NPU rank for D2D")
         group.add_argument("-ping-check", dest="ping_check", action="store_true", help="run ping checks from URMA EID pairs")
-        group.add_argument("-stream-control", dest="check_npu_stream_control", action="store_true",
-                           help="check NPU stream control register via devmem")
         group.add_argument("-urma-cmd", dest="urma_cmd", action="store_true", help="print URMA listener/client commands")
         group.add_argument("-d2d-mode", choices=["many-to-one", "one-to-many", "alltoall"], default="many-to-one",
                            help="D2D pair expansion mode (alltoall: every NPU sends to every other NPU; "
@@ -269,7 +259,6 @@ class ArgumentGroups:
         group.add_argument("-get-power", "-get_power", action='store_true', help="get rated power")
         group.add_argument("-get-root", "-get_root", action='store_true', help="Get root configuration")
         group.add_argument("-test-rate-file", type=str, help="Power test file path for hp-check")
-        group.add_argument("-single-operator", "-single_operator", action='store_true', help="Check hccl single operator")
         group.add_argument("-mpirun-bw", "-mpirun_bw", action='store_true', help="Check mpirun bandwidth test")
         group.add_argument("-test-gpt", "-test_gpt", action='store_true', help="Auto test gpt")
         group.add_argument("-update-code", "-update_code", action='store_true', help="Update sprinkler code")

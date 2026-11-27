@@ -206,7 +206,7 @@ def bios_inspect_execute(args) -> int:
     errors = 0
     for index, result in enumerate(ordered, start=1):
         node = result["node"]
-        run_log.info(f"节点{index} ：{node}  "
+        run_log.info(f"节点{index} ：{node}      "
                      "BMC 菜单：系统管理 -> BIOS配置 -> BIOS全量配置菜单")
         if result["error"]:
             errors += 1

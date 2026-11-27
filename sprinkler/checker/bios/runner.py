@@ -123,11 +123,11 @@ def _inspect_target(target, whitelist, system_id: str, timeout: int) -> dict:
     return result
 
 
-TABLE_HEADER = "属性名 | 配置项 | 当前值 | BMC 路径"
+TABLE_HEADER = "属性名 | 配置项 | 当前值 | 配置项路径"
 
 
 def _console_row(row: dict) -> str:
-    """按固定列顺序输出一行：中文名 | 配置项 | 当前值 | BMC 路径。"""
+    """按固定列顺序输出一行：中文名 | 配置项 | 当前值 | 配置项路径。"""
     return " | ".join([
         str(row.get("ZhName") or "-"),
         str(row.get("Attribute") or "-"),
@@ -207,6 +207,7 @@ def bios_inspect_execute(args) -> int:
     for index, result in enumerate(ordered, start=1):
         node = result["node"]
         run_log.info(f"节点{index} ：{node}")
+        run_log.info("BMC 菜单：系统管理 -> BIOS配置 -> BIOS全量配置菜单")
         if result["error"]:
             errors += 1
             run_log.fail(f"{node}: {result['error']}")

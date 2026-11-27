@@ -11,7 +11,7 @@ from typing import Any, ClassVar
 class ConnectionTarget:
     META_KEYS: ClassVar[set[str]] = {"kind", "sp", "ca", "node", "rank", "cabinet_name", "raw_name", "source",
                                      "asset_category", "endpoint", "subsystem",
-                                     "blade_id", "device_type", "cabinet_id"}
+                                     "blade_id", "device_type", "cabinet_id", "port_explicit"}
 
     name: str
     host: str

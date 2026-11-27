@@ -7,8 +7,11 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from sprinkler.arguments import get_args_parser
 from sprinkler.checker.bios import (
     DEFAULT_WHITELIST_PATH,
+    BiosInspectError,
+    BiosInspector,
     build_rows,
     format_menu_path,
     load_whitelist,
@@ -91,6 +94,68 @@ class RegistryVersionTest(unittest.TestCase):
         self.assertEqual(normalize_registry_version("BiosAttributeRegistry.1.5.3"), (1, 5, 3))
         self.assertEqual(normalize_registry_version("BiosAttributeRegistry.v1_5_3"), (1, 5, 3))
         self.assertIsNone(normalize_registry_version("OtherRegistry"))
+
+
+class _StubReader:
+    """按路径返回预置 ``(data, status)`` 的假 RedfishReader。"""
+
+    def __init__(self, responses):
+        self._responses = responses
+        self.requested = []
+
+    def get(self, path):
+        self.requested.append(path)
+        return self._responses.get(path, (None, 404))
+
+
+def _registry_responses(members, registry_uri, file_uri):
+    return {
+        "/redfish/v1/Registries": (
+            {"Members": [{"@odata.id": uri} for uri in members]}, 200),
+        registry_uri: (
+            {"Location": [{"Language": "en", "Uri": file_uri}]}, 200),
+        file_uri: (
+            {"RegistryEntries": {"Attributes": [
+                {"AttributeName": "A", "DisplayName": "A Name",
+                 "MenuPath": "./Advanced/A"},
+            ]}}, 200),
+    }
+
+
+class RegistryFallbackTest(unittest.TestCase):
+    def test_version_exact_match_wins(self):
+        members = [
+            "/redfish/v1/Registries/BiosAttributeRegistry/BiosAttributeRegistry.1.4.0",
+            "/redfish/v1/Registries/BiosAttributeRegistry/BiosAttributeRegistry.1.5.3",
+        ]
+        file_uri = members[1] + ".json"
+        reader = _StubReader(_registry_responses(members, members[1], file_uri))
+        meta = BiosInspector(reader)._load_registry("BiosAttributeRegistry.1.5.3")
+        self.assertEqual(meta["A"]["display_name"], "A Name")
+        self.assertEqual(meta["A"]["menu_path"], "./Advanced/A")
+        self.assertNotIn(members[0], reader.requested)
+
+    def test_unversioned_member_falls_back(self):
+        registry_uri = "/redfish/v1/Registries/BiosAttributeRegistry"
+        file_uri = "/redfish/v1/Registries/BiosAttributeRegistry.1.76.0.json"
+        reader = _StubReader(_registry_responses([registry_uri], registry_uri, file_uri))
+        meta = BiosInspector(reader)._load_registry("BiosAttributeRegistry.1.76")
+        self.assertEqual(meta["A"]["display_name"], "A Name")
+        self.assertIn(registry_uri, reader.requested)
+
+    def test_version_mismatch_still_raises(self):
+        registry_uri = "/redfish/v1/Registries/BiosAttributeRegistry/BiosAttributeRegistry.1.4.0"
+        reader = _StubReader(_registry_responses([registry_uri], registry_uri, "/x.json"))
+        with self.assertRaises(BiosInspectError):
+            BiosInspector(reader)._load_registry("BiosAttributeRegistry.1.5.3")
+        self.assertNotIn(registry_uri, reader.requested)
+
+    def test_multiple_unversioned_candidates_raises(self):
+        first = "/redfish/v1/Registries/BiosAttributeRegistry"
+        second = "/redfish/v1/Registries/BiosAttributeRegistryBackup"
+        reader = _StubReader(_registry_responses([first, second], first, "/x.json"))
+        with self.assertRaises(BiosInspectError):
+            BiosInspector(reader)._load_registry("BiosAttributeRegistry.1.76")
 
 
 class WhitelistTest(unittest.TestCase):
@@ -244,18 +309,22 @@ class TargetOptionsTest(unittest.TestCase):
 
 class RedfishPortTest(unittest.TestCase):
     def test_default_port_is_443(self):
-        target = SimpleNamespace(host="10.0.0.1", user="Administrator", password="pwd",
-                                 port=22, meta={"source": "xlsx"})
+        target = ConnectionTarget(name="n", host="10.0.0.1", port=22,
+                                  user="Administrator", password="pwd",
+                                  meta={"source": "xlsx"})
         self.assertEqual(_target_creds(target)[3], 443)
 
     def test_explicit_port_is_preserved(self):
-        target = SimpleNamespace(host="10.0.0.1", user="Administrator", password="pwd",
-                                 port=8443, meta={"port_explicit": True, "source": "cli_ip"})
+        target = ConnectionTarget(name="n", host="10.0.0.1", port=8443,
+                                  user="Administrator", password="pwd",
+                                  meta={"port_explicit": True, "source": "cli_ip"})
+        self.assertIn("port_explicit", target.meta or {})
         self.assertEqual(_target_creds(target)[3], 8443)
 
     def test_node_mode_without_port_uses_443(self):
-        target = SimpleNamespace(host="10.0.0.1", user="Administrator", password="pwd",
-                                 port=22, meta={"port_explicit": False, "source": "cli_node_ip"})
+        target = ConnectionTarget(name="n", host="10.0.0.1", port=22,
+                                  user="Administrator", password="pwd",
+                                  meta={"port_explicit": False, "source": "cli_node_ip"})
         self.assertEqual(_target_creds(target)[3], 443)
 
 
@@ -300,6 +369,25 @@ class PasswordPromptTest(unittest.TestCase):
             stdin.isatty.return_value = True
             with self.assertRaises(ValueError):
                 prompt_missing_passwords([self._target()])
+
+
+def _cli_action_help(dest: str) -> str:
+    for group in get_args_parser()._action_groups:
+        for action in group._group_actions:
+            if action.dest == dest:
+                return action.help or ""
+    raise AssertionError(f"未找到参数 {dest}")
+
+
+class HelpTextTest(unittest.TestCase):
+    def test_bios_inspect_help_stays_concise(self):
+        help_text = _cli_action_help("bios_inspect")
+        # 关键信息必须在，细节（凭据语义/多示例）不应重复堆在 help 里
+        self.assertIn("bios_whitelist.json", help_text)
+        self.assertIn("-bios-whitelist", help_text)
+        self.assertIn("-ip", help_text)
+        self.assertIn("-sp/-ca/-node", help_text)
+        self.assertLessEqual(len(help_text), 400)
 
 
 if __name__ == "__main__":

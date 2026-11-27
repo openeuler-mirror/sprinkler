@@ -166,7 +166,8 @@ def bios_inspect_execute(args) -> int:
         whitelist, unmatched = whitelist.select(keywords)
         if unmatched:
             raise ValueError(
-                "以下关键字未匹配任何白名单条目: " + "|".join(unmatched))
+                "以下关键字未匹配任何白名单条目: " + "|".join(unmatched)
+                + "（按名称/别名精确匹配，不支持子串与分类名）")
         if not whitelist.items:
             raise ValueError("白名单中没有可巡检的条目（请检查 enabled 或关键字）")
     except Exception as exc:

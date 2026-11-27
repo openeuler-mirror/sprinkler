@@ -224,8 +224,15 @@ class BiosInspector:
             if target_version and normalize_registry_version(uri) == target_version:
                 registry_uri = uri
                 break
-        if not registry_uri and target_version is None and candidates:
-            registry_uri = candidates[0]
+        if not registry_uri:
+            if target_version is None and candidates:
+                registry_uri = candidates[0]
+            else:
+                # 部分 BMC 的 Registries member 不带版本号，此时按“唯一无版本候选”回退
+                unversioned = [uri for uri in candidates
+                               if normalize_registry_version(uri) is None]
+                if len(unversioned) == 1:
+                    registry_uri = unversioned[0]
         if not registry_uri:
             raise BiosInspectError(
                 f"未匹配注册表 {registry_name}；候选: {', '.join(candidates) or '无'}"

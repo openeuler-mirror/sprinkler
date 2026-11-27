@@ -199,6 +199,7 @@ class PrbsIntegrationTest(unittest.TestCase):
         for target in (text, log_text):
             self.assertIn("NPU 侧 RX 误码率统计", target)
             self.assertIn("5808 侧 RX 端口误码率统计", target)
+            self.assertIn("（2 轮有效采样，首轮预热已丢弃）", target)
             self.assertLess(target.index("NPU 侧 RX"), target.index("5808 侧 RX"))
             self.assertIn("NPU0 serdes0 m0 L0: max=4.000000e-08 "
                           "mean=3.500000e-08", target)
@@ -250,12 +251,14 @@ class PrbsIntegrationTest(unittest.TestCase):
         self.assertEqual(rc, runner.EXIT_RUN)
         self.assertIn("首轮开流就绪校验失败", text)
         self.assertIn("未开始有效采样", text)
+        self.assertIn("无有效采样轮次", text)
         self.assertNotIn("--- 第 1/2 轮有效采样结果 ---", text)
         self.assertEqual(npu.status_calls, 1)
         self.assertEqual(not_ready_switches[0].get_calls, 1)
         self.assertEqual(not_ready_switches[0].set_calls, [True, False])
         self.assertEqual(sleep.call_count, 0)
         self.assertIn("开流未就绪: NPU0 serdes0 m0 L0: en=0", log_text)
+        self.assertIn("无有效采样轮次", log_text)
 
 
 if __name__ == "__main__":

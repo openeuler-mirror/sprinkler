@@ -10,6 +10,7 @@ from sprinkler.connect.npu_access import npu_os_command
 
 DEFAULT_UDIE = 0
 DEFAULT_MACROS = tuple(range(8))
+MAX_MACRO_INDEX = 16
 DEFAULT_LANES = 4
 DEFAULT_PARALLEL = 8
 DEFAULT_TIMEOUT = 30

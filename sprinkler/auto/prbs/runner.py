@@ -18,12 +18,14 @@ PRBS 误码率依赖对端发送 PRBS，因此 ``-ip``（5808 前台管理 IP）
 
 from __future__ import annotations
 
+import math
 import time
 from typing import Dict, List, Sequence, Tuple
 
 from sprinkler.auto.prbs.serdes import (
     DEFAULT_LANES,
     DEFAULT_TIMEOUT,
+    MAX_MACRO_INDEX,
     REMOTE_TOOL_PATH,
     NpuPrbs,
     check_status_ready,
@@ -65,7 +67,20 @@ def _parse_macros(args) -> List[int]:
         raise ValueError("-macros 不能为空")
     if any(macro < 0 for macro in macros):
         raise ValueError("-macros 不支持负数")
+    if any(macro > MAX_MACRO_INDEX for macro in macros):
+        raise ValueError(f"-macros 超出范围: 合法值 0-{MAX_MACRO_INDEX}")
     return macros
+
+
+def _parse_limit(args) -> float | None:
+    """误码率目标值（-target）；未指定时不做 PASS/FAIL 判定。"""
+    value = getattr(args, "target", None)
+    if value is None:
+        return None
+    limit = float(value)
+    if not math.isfinite(limit) or limit <= 0:
+        raise ValueError("-target 必须是大于 0 的有限数")
+    return limit
 
 
 def _parse_rounds(args) -> int:
@@ -198,8 +213,28 @@ def _record_npu_ber(history: Dict[Tuple[str, int, int, int], List[float]],
             history.setdefault(key, []).append(float(row["ber"]))
 
 
+def _ber_summary_header(prefix: str, kept_rounds: int,
+                        limit: float | None) -> str:
+    """汇总标题按实际完成的有效采样轮数生成。"""
+    threshold = f"，阈值 {limit:g}" if limit is not None else ""
+    if kept_rounds > 0:
+        return f"{prefix}（{kept_rounds} 轮有效采样，首轮预热已丢弃{threshold}）:"
+    return f"{prefix}（无有效采样轮次{threshold}）:"
+
+
+def _format_ber_line(prefix: str, worst: float, mean: float,
+                     limit: float | None) -> Tuple[str, bool | None]:
+    """单条 BER 汇总行；设置阈值时追加 PASS/FAIL 判定。"""
+    line = f"{prefix}: max={worst:.6e} mean={mean:.6e}"
+    if limit is None:
+        return line, None
+    passed = worst <= limit
+    return f"{line} {'PASS' if passed else 'FAIL'}", passed
+
+
 def _npu_ber_summary_lines(history: Dict[Tuple[str, int, int, int], List[float]],
-                           rounds: int) -> List[str]:
+                           kept_rounds: int,
+                           limit: float | None = None) -> List[Tuple[str, bool | None]]:
     """返回 NPU 侧每个 lane 的 RX BER 汇总行。"""
     rows = []
     for (target, serdes, macro, lane), values in history.items():
@@ -209,19 +244,22 @@ def _npu_ber_summary_lines(history: Dict[Tuple[str, int, int, int], List[float]]
                      sum(values) / len(values)))
     rows.sort(key=lambda item: item[1], reverse=True)
 
-    lines = [f"NPU 侧 RX 误码率统计（{rounds} 轮有效采样，首轮预热已丢弃）:"]
+    lines: List[Tuple[str, bool | None]] = [
+        (_ber_summary_header("NPU 侧 RX 误码率统计", kept_rounds, limit), None)
+    ]
     if not rows:
-        lines.append("  无有效读数")
+        lines.append(("  无有效读数", None))
         return lines
     for (target, serdes, macro, lane), worst, mean in rows:
-        lines.append(f"  {target} serdes{serdes} m{macro} L{lane}: "
-                     f"max={worst:.6e} mean={mean:.6e}")
+        lines.append(_format_ber_line(
+            f"  {target} serdes{serdes} m{macro} L{lane}", worst, mean, limit))
     return lines
 
 
 def _switch_ber_summary_lines(jobs: Sequence[Tuple[Switch5808, List[SwitchPort]]],
                               history: Dict[Tuple[str, int, int, int, int], List[float]],
-                              rounds: int) -> List[str]:
+                              kept_rounds: int,
+                              limit: float | None = None) -> List[Tuple[str, bool | None]]:
     """返回每台 5808 每个 lane 的 RX BER 汇总行（按最大值降序）。"""
     port_info = {}
     for switch, ports in jobs:
@@ -237,11 +275,13 @@ def _switch_ber_summary_lines(jobs: Sequence[Tuple[Switch5808, List[SwitchPort]]
                      max(values), sum(values) / len(values)))
     rows.sort(key=lambda item: item[1], reverse=True)
 
-    lines = [f"5808 侧 RX 端口误码率统计（{rounds} 轮有效采样，首轮预热已丢弃）:"]
+    lines: List[Tuple[str, bool | None]] = [
+        (_ber_summary_header("5808 侧 RX 端口误码率统计", kept_rounds, limit), None)
+    ]
     for (switch_name, chip, port_no, unit, serdes, interface), worst, mean in rows:
-        lines.append(f"  {switch_name} chip{chip} port{port_no} ({interface}) "
-                     f"unit{unit} serdes{serdes}: "
-                     f"max={worst:.6e} mean={mean:.6e}")
+        lines.append(_format_ber_line(
+            f"  {switch_name} chip{chip} port{port_no} ({interface}) "
+            f"unit{unit} serdes{serdes}", worst, mean, limit))
     seen_ports = {(switch_name, chip, port_no)
                   for (switch_name, chip, port_no, _, _) in history}
     for switch, ports in jobs:
@@ -251,13 +291,15 @@ def _switch_ber_summary_lines(jobs: Sequence[Tuple[Switch5808, List[SwitchPort]]
             preview = ", ".join(f"chip{port.chip}/port{port.port}"
                                 for port in missing[:10])
             suffix = "" if len(missing) <= 10 else f" ... 共 {len(missing)} 个"
-            lines.append(f"  {switch.name} 无有效读数端口: {preview}{suffix}")
+            lines.append(
+                (f"  {switch.name} 无有效读数端口: {preview}{suffix}", None))
     return lines
 
 
 def prbs_exec(args) -> int:
     try:
         macros = _parse_macros(args)
+        limit = _parse_limit(args)
         rounds = _parse_rounds(args)
         interval = _parse_interval(args)
         switches = _build_switches(args)
@@ -289,6 +331,8 @@ def prbs_exec(args) -> int:
     print(f"NPU 参数: udie={getattr(args, 'udie', 0)} "
           f"macros={','.join(str(macro) for macro in macros)} lanes={DEFAULT_LANES} "
           f"有效采样={rounds} 轮 + 首轮预热丢弃（共 {acquire_rounds} 轮）")
+    if limit is not None:
+        print(f"误码率阈值: {limit:g}（超过阈值的 lane 标记 FAIL）")
 
     if not ensure_no_pass(args, ranks=ranks):
         print("PRBS 中止: NPU 免密不可用")
@@ -312,6 +356,7 @@ def prbs_exec(args) -> int:
     jobs: List[Tuple[Switch5808, List[SwitchPort]]] = []
     ber_history: Dict[Tuple[str, int, int, int, int], List[float]] = {}
     npu_ber_history: Dict[Tuple[str, int, int, int], List[float]] = {}
+    kept_rounds = 0
     npu_started = False
     interrupted = False
     try:
@@ -411,6 +456,7 @@ def prbs_exec(args) -> int:
             _record_npu_ber(npu_ber_history, status_results)
             for switch, ports, results in switch_results:
                 _record_port_ber(ber_history, switch.name, ports, results)
+            kept_rounds = kept
             for line in details:
                 write_detail(line)
 
@@ -441,13 +487,19 @@ def prbs_exec(args) -> int:
                 failures += _report_switch_commands(
                     f"5808 关流({switch.name})", ports, results, switch.name)
 
-    for line in _npu_ber_summary_lines(npu_ber_history, rounds):
-        print(line)
-        write_detail(line)
+    summary_lines = _npu_ber_summary_lines(npu_ber_history, kept_rounds, limit)
     if jobs:
-        for line in _switch_ber_summary_lines(jobs, ber_history, rounds):
+        summary_lines += _switch_ber_summary_lines(
+            jobs, ber_history, kept_rounds, limit)
+    ber_failed = sum(1 for _, ok in summary_lines if ok is False)
+    for line, ok in summary_lines:
+        if ok is True:
+            print(f"{Colors.GREEN}{line}{Colors.RESET}")
+        elif ok is False:
+            print(f"{Colors.RED}{line}{Colors.RESET}")
+        else:
             print(line)
-            write_detail(line)
+        write_detail(line)
 
     if interrupted:
         message = f"PRBS 中止，失败 {len(failures)} 项"
@@ -459,7 +511,14 @@ def prbs_exec(args) -> int:
         print(f"{Colors.RED}{message}{Colors.RESET}")
         write_detail(message)
         return EXIT_RUN
+    if ber_failed:
+        message = f"PRBS 完成，{ber_failed} 个 lane 误码率超过阈值 {limit:g}"
+        print(f"{Colors.RED}{message}{Colors.RESET}")
+        write_detail(message)
+        return EXIT_RUN
     message = "PRBS 完成，全部命令执行成功"
+    if limit is not None:
+        message += f"，误码率均未超过阈值 {limit:g}"
     print(f"{Colors.GREEN}{message}{Colors.RESET}")
     write_detail(message)
     return EXIT_OK

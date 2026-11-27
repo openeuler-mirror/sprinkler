@@ -396,7 +396,11 @@ class ArgumentGroups:
                                 "5808 front(s) and is required because BER needs the 5808 side "
                                 "to send PRBS)")
         group.add_argument("-macros", dest="macros", type=str, default="0-7",
-                           help="NPU serdes macros to drive, e.g. 0-7 or 0,2,4 (default: 0-7)")
+                           help="NPU serdes macros to drive, e.g. 0-7 or 0,2,4 "
+                                "(default: 0-7, valid: 0-16)")
+        group.add_argument("-target", dest="target", type=float, default=1e-9,
+                           help="BER target, e.g. 5E-7 or 1e-6; lanes whose max BER "
+                                "exceeds it are marked FAIL (default: 1e-9)")
         group.add_argument("-rounds", dest="rounds", type=int, default=5,
                            help="retained sampling rounds per port; one extra warm-up round "
                                 "is acquired and discarded (default: 5)")

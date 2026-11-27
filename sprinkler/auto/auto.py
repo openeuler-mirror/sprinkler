@@ -4,26 +4,8 @@ import subprocess
 import datetime
 
 from sprinkler.arguments import get_args
-from sprinkler.utils.utils import _RUN_PATH, find_all_shell, package_path
+from sprinkler.utils.utils import _RUN_PATH, package_path
 from sprinkler.auto.bandwidth.svm_bandwidth import svm_bandwidth
-
-
-def run_from_args(args):
-    roads = {}
-    if args.auto or args.all:
-        command = ['bash', str(package_path() / "auto" / "auto.sh")]
-        if args.auto:
-            command.extend(['--level', args.auto])
-        process = subprocess.Popen(command,
-                           stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT,
-                           text=True,
-                           encoding='utf-8',
-                           errors='replace',
-                           bufsize=1)
-        for line in process.stdout:
-            print(line, end='')
-        process.wait()
 
 
 def stop_urma(args):
@@ -91,12 +73,6 @@ def enable_env(args):
     """环境使能检查 - 复用 -env-check 的 Python 实现（高性能模式 + 分bin）"""
     return env_check(args)
 
-def single_operator(args):
-    """单算子测试 - 原 single_operator.sh 已不存在，功能待补"""
-    print("ERROR: -single-operator 尚未提供 Python 实现（原 sprinkler/env/auto/single_operator.sh 已不存在）")
-    print("       建议复用 oneclick/pta_common.py 的 TEST_SCRIPT_MAP 机制补写")
-    return 1
-    
 def mpirun_bandwidth(args):
     """MPirun单机带宽测试 - Python实现"""
     from sprinkler.auto.oneclick.mpirun_bandwidth import mpirun_bandwidth_check
@@ -249,8 +225,6 @@ def auto_exec():
         npu_check_resource(args)
     if args.npu_kill:
         npu_kill(args)
-    if args.single_operator:
-        single_operator(args)
     if args.mpirun_bw:
         mpirun_bandwidth(args)
     if args.pta_test:
@@ -290,9 +264,6 @@ def auto_exec():
     if args.ping_check:
         from sprinkler.auto.bandwidth.planning.ping_check import ping_check_execute
         ping_check_execute(args)
-    if args.check_npu_stream_control:
-        from sprinkler.auto.base import check_npu_stream_control
-        check_npu_stream_control.check_npu_stream_control_execute(args)
     if getattr(args, "pn_check", False):
         from sprinkler.checker.serdes import pn_check_execute
         pn_check_execute(args)
@@ -365,7 +336,6 @@ def auto_exec():
     # svm打流
     if args.svm_bandwidth:
         svm_bandwidth(args)
-    run_from_args(args)
 
     # SMN相关检查
 

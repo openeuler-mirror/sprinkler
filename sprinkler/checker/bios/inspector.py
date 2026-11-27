@@ -160,37 +160,15 @@ def build_rows(
 class BiosInspector:
     """单个 CPU BMC 的 BIOS 采集器（只读）。"""
 
-    def __init__(self, reader: RedfishReader, system_id: str = "1",
-                 base_url: str = "", username: str = ""):
+    def __init__(self, reader: RedfishReader, system_id: str = "1"):
         self.reader = reader
         self.system_id = str(system_id or "1")
-        self.base_url = str(base_url or "").rstrip("/")
-        self.username = str(username or "Administrator")
         self.current: Dict[str, object] = {}
-        self.registry_name = ""
         self.registry_meta: Dict[str, dict] = {}
         self.warnings: List[str] = []
-        self.requests: List[dict] = []
-
-    def _build_curl(self, method: str, uri: str) -> str:
-        """按 reader 的会话配置拼一条可直接复制的 curl（密码脱敏）。
-
-        格式固定为::
-
-            curl --noproxy '*' -sk -u "user:*****" "URL" | python3 -m json.tool
-        """
-        full_url = uri
-        if self.base_url and not uri.startswith(("http://", "https://")):
-            full_url = f"{self.base_url}{uri}"
-        parts = ["curl", "--noproxy", "'*'", "-sk"]
-        if method != "GET":
-            parts.extend(["-X", method])
-        parts.extend(["-u", f'"{self.username}:*****"', f'"{full_url}"'])
-        parts.extend(["|", "python3", "-m", "json.tool"])
-        return " ".join(parts)
 
     def _get(self, uri: str) -> Tuple[Optional[dict], int]:
-        """支持注册表返回绝对 URL 或相对路径两种情况，并记录 curl 命令轨迹。"""
+        """支持注册表返回绝对 URL 或相对路径两种情况。"""
         text = str(uri or "")
         target = text
         if text.startswith(("http://", "https://")):
@@ -198,11 +176,7 @@ class BiosInspector:
             target = parsed.path or "/"
             if parsed.query:
                 target = f"{target}?{parsed.query}"
-        data, status = self.reader.get(target)
-        curl_cmd = self._build_curl("GET", target)
-        self.requests.append({"method": "GET", "uri": target, "curl": curl_cmd,
-                              "status": status})
-        return data, status
+        return self.reader.get(target)
 
     def load(self, wanted: Optional[Iterable[str]] = None) -> None:
         """读取 BIOS 当前值与属性注册表；注册表失败仅告警，不中断巡检。
@@ -210,7 +184,6 @@ class BiosInspector:
         :param wanted: 需要解析的属性名（白名单别名，大小写不敏感）。``None``
             表示解析整张注册表；空集合表示无需解析注册表。
         """
-        self.requests = []
         bios_uri = f"/redfish/v1/Systems/{quote(self.system_id, safe='')}/Bios"
         bios, status = self._get(bios_uri)
         if bios is None:
@@ -219,16 +192,16 @@ class BiosInspector:
         if not isinstance(current, dict):
             raise BiosInspectError(f"BIOS 响应缺少 Attributes 对象: {bios_uri}")
         self.current = current
-        self.registry_name = str(bios.get("AttributeRegistry") or "")
+        registry_name = str(bios.get("AttributeRegistry") or "")
 
         wanted_lower = None if wanted is None else {str(name).lower() for name in wanted}
         if wanted_lower is not None and not wanted_lower:
             return
-        if not self.registry_name:
+        if not registry_name:
             self.warnings.append("BIOS 响应缺少 AttributeRegistry，菜单路径可能缺失")
             return
         try:
-            self.registry_meta = self._load_registry(self.registry_name, wanted_lower)
+            self.registry_meta = self._load_registry(registry_name, wanted_lower)
         except BiosInspectError as exc:
             self.warnings.append(f"读取 BIOS 注册表失败，菜单路径可能缺失: {exc}")
 

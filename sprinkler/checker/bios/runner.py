@@ -1,11 +1,9 @@
 """``-bios-inspect`` 命令行入口：批量只读巡检 CPU BMC 的 BIOS 高性能配置。"""
 
 import getpass
-import shlex
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import replace
-from pathlib import Path
 from typing import List, Optional
 
 from sprinkler.base.log import RunLog
@@ -23,61 +21,6 @@ CHECK_ID = "bios_inspect"
 DEFAULT_PARALLEL = 8
 DEFAULT_TIMEOUT = 20
 DEFAULT_REDFISH_PORT = 443
-
-
-def _mask_ip_spec(value: str) -> str:
-    """``-ip "ip user pwd"`` 形式中把密码替换为 *****。"""
-    entries = []
-    for entry in str(value or "").split(","):
-        parts = entry.split()
-        if len(parts) >= 3:
-            parts = parts[:2] + ["*****"]
-        entries.append(" ".join(parts))
-    return ",".join(entries)
-
-
-def _mask_node_spec(value: str) -> str:
-    """``-node "ip;user;pwd"`` 形式中把密码替换为 *****。"""
-    parts = str(value or "").split(";")
-    if len(parts) >= 3 and parts[2].strip():
-        parts[2] = "*****"
-    return ";".join(parts)
-
-
-def masked_command(argv=None) -> str:
-    """回显当前命令，但对 ``-pwd``、``-ip``/``-node`` 内嵌密码做脱敏。"""
-    values = list(sys.argv if argv is None else argv)
-    if not values:
-        return ""
-    result = [Path(values[0]).name or "sprinkler"]
-    index = 1
-    while index < len(values):
-        token = values[index]
-        if token in ("-pwd", "--pwd"):
-            result.append(token)
-            if index + 1 < len(values):
-                result.append("*****")
-                index += 2
-                continue
-            index += 1
-            continue
-        if token.startswith("-pwd="):
-            result.append("-pwd=*****")
-            index += 1
-            continue
-        if token in ("-ip", "--ip") and index + 1 < len(values):
-            result.extend([token, _mask_ip_spec(values[index + 1])])
-            index += 2
-            continue
-        if token in ("-node", "--node") and index + 1 < len(values):
-            result.extend([token, _mask_node_spec(values[index + 1])])
-            index += 2
-            continue
-        result.append(token)
-        index += 1
-    command = " ".join(shlex.quote(part) for part in result)
-    # shlex 会把 * 当作通配符加引号，脱敏占位符保持原样更易读
-    return command.replace("'*****'", "*****")
 
 
 def validate_target_options(args) -> None:
@@ -156,32 +99,27 @@ def _target_creds(target):
 def _inspect_target(target, whitelist, system_id: str, timeout: int) -> dict:
     """采集单个 BMC；异常转换为结果行里的 error，不影响其它节点。"""
     label = _target_label(target)
-    result = {"node": label, "rows": [], "missing": [], "warnings": [],
-              "requests": [], "error": ""}
+    result = {"node": label, "rows": [], "missing": [], "warnings": [], "error": ""}
     inspector = None
     try:
         host, user, password, port = _target_creds(target)
         reader = build_reader(host, user, password, timeout, port)
         try:
-            inspector = BiosInspector(reader, system_id,
-                                     base_url=reader.base_url, username=user)
+            inspector = BiosInspector(reader, system_id)
             inspector.load(whitelist.aliases())
             rows, missing = build_rows(whitelist, inspector.current, inspector.registry_meta)
         finally:
             reader.close()
     except (BiosInspectError, ValueError) as exc:
         result["error"] = str(exc)
-        result["requests"] = getattr(inspector, "requests", []) if inspector else []
         return result
     except Exception as exc:  # 单节点失败不阻断集群巡检
         result["error"] = f"{type(exc).__name__}: {exc}"
-        result["requests"] = getattr(inspector, "requests", []) if inspector else []
         return result
 
     for row in rows:
         row["Node"] = label
-    result.update(rows=rows, missing=missing, warnings=inspector.warnings,
-                  requests=inspector.requests)
+    result.update(rows=rows, missing=missing, warnings=inspector.warnings)
     return result
 
 
@@ -275,6 +213,8 @@ def bios_inspect_execute(args) -> int:
             continue
         for warning in result["warnings"]:
             run_log.info(f"{node}: {warning}")
+        if result["missing"]:
+            run_log.info(f"{node}: 当前 BIOS 未暴露项: {', '.join(result['missing'])}")
         _log_rows(run_log, result["rows"])
 
     run_log.info(f"bios_summary nodes={len(targets)} errors={errors} "

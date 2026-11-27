@@ -45,7 +45,6 @@ class Whitelist:
     path: Path
     categories: Tuple[WhitelistCategory, ...]
     items: Tuple[WhitelistItem, ...]
-    alias_index: Dict[str, WhitelistItem]
 
     def aliases(self) -> Set[str]:
         """当前白名单内所有条目的别名（小写），供按需解析注册表使用。"""
@@ -64,7 +63,6 @@ class Whitelist:
         matched: Set[str] = set()
         categories = []
         items = []
-        alias_index: Dict[str, WhitelistItem] = {}
         for category in self.categories:
             category_items = []
             for item in category.items:
@@ -78,8 +76,6 @@ class Whitelist:
                     continue
                 category_items.append(item)
                 items.append(item)
-                for alias in aliases:
-                    alias_index.setdefault(alias, item)
             if category_items:
                 categories.append(WhitelistCategory(
                     name=category.name,
@@ -91,12 +87,7 @@ class Whitelist:
             path=self.path,
             categories=tuple(categories),
             items=tuple(items),
-            alias_index=alias_index,
         ), missing
-
-    def match(self, attribute_name: str) -> Optional[WhitelistItem]:
-        """按真实属性名（大小写不敏感）查找巡检项。"""
-        return self.alias_index.get(str(attribute_name or "").strip().lower())
 
 
 def resolve_whitelist_path(value: Optional[str]) -> Path:
@@ -189,5 +180,4 @@ def load_whitelist(path: Optional[str] = None) -> Whitelist:
         path=whitelist_path,
         categories=tuple(categories),
         items=tuple(items),
-        alias_index=alias_index,
     )

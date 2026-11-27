@@ -4,3 +4,4 @@ recursive-include sprinkler *.txt
 recursive-include sprinkler *.csv
 recursive-include sprinkler *.conf
 recursive-include sprinkler *.yaml
+recursive-include sprinkler *.json

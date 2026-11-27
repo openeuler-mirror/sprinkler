@@ -31,4 +31,5 @@
 - ``status``：设备状态检查。
 - ``upgrade``：固件升级通道、编排与校验。
 - ``serdes``：NPU 端口 SerDes PN 极性检查（``-pn-check``）。
+- ``bios``：BIOS 高性能配置只读巡检（``-bios-inspect``）。
 """

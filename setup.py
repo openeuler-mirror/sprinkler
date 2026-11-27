@@ -49,6 +49,7 @@ setuptools.setup(
         "prompt_toolkit",
         "paramiko>=2.10",
         "telnetlib3>=2.0.0",
+        "requests>=2.25",
     ],
     python_requires='>=3.10',
     packages=setuptools.find_packages(),
